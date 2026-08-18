@@ -1,0 +1,6 @@
+{
+  "name": "Twitch Access Report Viewer",
+  "description": "Upload and explore Twitch.tv GDPR and CCPA data collection reports with interactive file tree and parsed CSV/JSON data viewers.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

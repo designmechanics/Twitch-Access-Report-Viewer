@@ -1,0 +1,72 @@
+import React, { useState } from 'react';
+import { Copy, Check, WrapText, AlignLeft } from 'lucide-react';
+
+interface RawTextViewerProps {
+  content: string;
+  fileName: string;
+}
+
+export const RawTextViewer: React.FC<RawTextViewerProps> = ({ content, fileName }) => {
+  const [copied, setCopied] = useState(false);
+  const [wrapLines, setWrapLines] = useState(true);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(content);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const lines = content.split('\n');
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-[#18181b] border border-[#2d2d35] p-3 rounded-xl flex items-center justify-between gap-3">
+        <div className="text-xs text-zinc-400 font-mono">
+          <span>{lines.length.toLocaleString()} lines</span>
+          <span className="mx-2 text-zinc-600">|</span>
+          <span>{new Blob([content]).size.toLocaleString()} bytes</span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setWrapLines(!wrapLines)}
+            className={`cursor-pointer flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs border transition-colors ${
+              wrapLines
+                ? 'bg-[#9146ff]/20 text-[#bf94ff] border-[#9146ff]/40'
+                : 'bg-[#26262c] text-zinc-400 border-[#393943] hover:text-white'
+            }`}
+          >
+            <WrapText className="w-3.5 h-3.5" />
+            <span>Wrap Text</span>
+          </button>
+
+          <button
+            onClick={handleCopy}
+            className="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#26262c] hover:bg-[#32323a] text-zinc-200 text-xs font-medium border border-[#393943] transition-colors"
+          >
+            {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+            <span>{copied ? 'Copied' : 'Copy'}</span>
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-[#121214] border border-[#2d2d35] rounded-xl font-mono text-xs overflow-x-auto max-h-[620px] scrollbar-thin scrollbar-thumb-zinc-700 flex">
+        {/* Line numbers gutter */}
+        <div className="bg-[#0e0e10] py-3 px-2 text-right text-zinc-600 select-none border-r border-[#26262c] font-mono text-[11px] leading-relaxed shrink-0 min-w-[44px]">
+          {lines.map((_, i) => (
+            <div key={i}>{i + 1}</div>
+          ))}
+        </div>
+
+        {/* Content */}
+        <div
+          className={`py-3 px-4 text-zinc-200 leading-relaxed font-mono flex-1 ${
+            wrapLines ? 'whitespace-pre-wrap break-all' : 'whitespace-pre'
+          }`}
+        >
+          {content}
+        </div>
+      </div>
+    </div>
+  );
+};

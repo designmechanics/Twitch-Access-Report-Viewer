@@ -1,0 +1,130 @@
+import React, { useState, useEffect } from 'react';
+import { Header } from './components/Header';
+import { ZipDropzone } from './components/ZipDropzone';
+import { FileTreeSidebar } from './components/FileTreeSidebar';
+import { ReportViewer } from './components/ReportViewer';
+import { FileTreeNode, ZipFileEntry, TwitchReportStats } from './types';
+import { parseTwitchZip } from './utils/zipParser';
+import { generateSampleTwitchZip } from './utils/sampleData';
+
+export default function App() {
+  const [tree, setTree] = useState<FileTreeNode[]>([]);
+  const [entries, setEntries] = useState<ZipFileEntry[]>([]);
+  const [stats, setStats] = useState<TwitchReportStats | null>(null);
+  const [selectedFile, setSelectedFile] = useState<ZipFileEntry | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Process a zip file or blob
+  const processZip = async (fileOrBlob: File | Blob) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const parsed = await parseTwitchZip(fileOrBlob);
+      setEntries(parsed.entries);
+      setTree(parsed.tree);
+      setStats(parsed.stats);
+
+      // Auto-select a high priority file (e.g. user_details.json or chat_messages.csv or minutes_watched.csv)
+      const priorityOrder = [
+        'account_information/user_details.json',
+        'chat/chat_messages.csv',
+        'viewership/minutes_watched.csv',
+        'financials/subscriptions.csv',
+        'financials/bits_cheers.csv'
+      ];
+
+      let defaultSelection = parsed.entries.find((e) =>
+        priorityOrder.some((p) => e.path.toLowerCase().includes(p.toLowerCase()))
+      );
+
+      if (!defaultSelection && parsed.entries.length > 0) {
+        defaultSelection = parsed.entries[0];
+      }
+
+      setSelectedFile(defaultSelection || null);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'Failed to extract and read Twitch .zip archive.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      processZip(e.target.files[0]);
+    }
+  };
+
+  const handleFileDrop = (file: File) => {
+    processZip(file);
+  };
+
+  const handleLoadSample = async () => {
+    try {
+      setIsLoading(true);
+      const sampleBlob = await generateSampleTwitchZip();
+      await processZip(sampleBlob);
+    } catch (err: any) {
+      console.error(err);
+      setError('Failed to generate sample archive.');
+      setIsLoading(false);
+    }
+  };
+
+  const handleReset = () => {
+    setTree([]);
+    setEntries([]);
+    setStats(null);
+    setSelectedFile(null);
+    setError(null);
+  };
+
+  return (
+    <div className="min-h-screen bg-[#0e0e10] text-zinc-100 flex flex-col font-sans selection:bg-[#9146ff] selection:text-white">
+      <Header
+        stats={stats}
+        currentFileName={selectedFile?.name || null}
+        onFileUpload={handleFileUpload}
+        onLoadSample={handleLoadSample}
+        onReset={handleReset}
+        isLoading={isLoading}
+      />
+
+      {error && (
+        <div className="bg-rose-950/50 border-b border-rose-900 px-4 py-2 text-xs text-rose-300 flex items-center justify-between">
+          <span>{error}</span>
+          <button
+            onClick={() => setError(null)}
+            className="cursor-pointer text-rose-400 hover:text-white font-bold ml-4"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* Main Workspace Layout */}
+      {stats && tree.length > 0 ? (
+        <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+          <FileTreeSidebar
+            tree={tree}
+            selectedFile={selectedFile}
+            onSelectFile={setSelectedFile}
+            categories={stats.categories}
+          />
+          <ReportViewer selectedFile={selectedFile} />
+        </div>
+      ) : (
+        <main className="flex-1 flex items-center justify-center p-4">
+          <ZipDropzone
+            onFileDrop={handleFileDrop}
+            onLoadSample={handleLoadSample}
+            isLoading={isLoading}
+          />
+        </main>
+      )}
+    </div>
+  );
+}

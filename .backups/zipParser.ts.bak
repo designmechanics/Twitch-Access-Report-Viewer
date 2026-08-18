@@ -1,0 +1,143 @@
+import JSZip from 'jszip';
+import { ZipFileEntry, FileTreeNode, TwitchReportStats } from '../types';
+import { getCategoryForPath } from './twitchCategories';
+
+export async function parseTwitchZip(fileOrBlob: File | Blob): Promise<{
+  entries: ZipFileEntry[];
+  tree: FileTreeNode[];
+  stats: TwitchReportStats;
+}> {
+  const zip = new JSZip();
+  const loadedZip = await zip.loadAsync(fileOrBlob);
+
+  const entries: ZipFileEntry[] = [];
+  let totalSize = 0;
+  let csvCount = 0;
+  let jsonCount = 0;
+  let otherCount = 0;
+  const categoryMap = new Map<string, number>();
+
+  const paths = Object.keys(loadedZip.files);
+
+  for (const path of paths) {
+    const zipObj = loadedZip.files[path];
+    if (zipObj.dir) continue; // We will construct directory nodes in tree building
+
+    // Extract extension
+    const parts = path.split('/');
+    const name = parts[parts.length - 1];
+    
+    // Ignore hidden system files like .DS_Store, __MACOSX
+    if (name.startsWith('.') || path.startsWith('__MACOSX/')) {
+      continue;
+    }
+
+    const dotIndex = name.lastIndexOf('.');
+    const extension = dotIndex !== -1 ? name.slice(dotIndex + 1).toLowerCase() : '';
+    const category = getCategoryForPath(path);
+
+    // Approximate size from internal metadata or blob creation
+    const blob = await zipObj.async('blob');
+    const size = blob.size;
+
+    totalSize += size;
+    if (extension === 'csv') csvCount++;
+    else if (extension === 'json') jsonCount++;
+    else otherCount++;
+
+    categoryMap.set(category, (categoryMap.get(category) || 0) + 1);
+
+    const entry: ZipFileEntry = {
+      path,
+      name,
+      size,
+      date: zipObj.date || new Date(),
+      dir: false,
+      extension,
+      blob,
+      category
+    };
+
+    entries.push(entry);
+  }
+
+  // Sort entries alphabetically
+  entries.sort((a, b) => a.path.localeCompare(b.path));
+
+  // Build tree
+  const tree = buildFileTree(entries);
+
+  const stats: TwitchReportStats = {
+    totalFiles: entries.length,
+    totalSize,
+    csvCount,
+    jsonCount,
+    otherCount,
+    categories: Array.from(categoryMap.entries()).map(([name, count]) => ({ name, count }))
+  };
+
+  return { entries, tree, stats };
+}
+
+function buildFileTree(entries: ZipFileEntry[]): FileTreeNode[] {
+  const rootNodes: FileTreeNode[] = [];
+
+  for (const entry of entries) {
+    const pathParts = entry.path.split('/').filter(Boolean);
+    let currentLevel = rootNodes;
+
+    for (let i = 0; i < pathParts.length; i++) {
+      const part = pathParts[i];
+      const isFile = i === pathParts.length - 1;
+      const currentPath = pathParts.slice(0, i + 1).join('/');
+
+      let existingNode = currentLevel.find((n) => n.name === part);
+
+      if (!existingNode) {
+        if (isFile) {
+          const fileNode: FileTreeNode = {
+            name: part,
+            path: entry.path,
+            isDir: false,
+            size: entry.size,
+            extension: entry.extension,
+            fileEntry: entry
+          };
+          currentLevel.push(fileNode);
+        } else {
+          const dirNode: FileTreeNode = {
+            name: part,
+            path: currentPath,
+            isDir: true,
+            children: []
+          };
+          currentLevel.push(dirNode);
+          currentLevel = dirNode.children!;
+        }
+      } else if (!isFile) {
+        if (!existingNode.children) {
+          existingNode.children = [];
+        }
+        currentLevel = existingNode.children;
+      }
+    }
+  }
+
+  // Sort nodes: directories first, then alphabetical
+  sortTreeNodes(rootNodes);
+  return rootNodes;
+}
+
+function sortTreeNodes(nodes: FileTreeNode[]) {
+  nodes.sort((a, b) => {
+    if (a.isDir && !b.isDir) return -1;
+    if (!a.isDir && b.isDir) return 1;
+    return a.name.localeCompare(b.name);
+  });
+
+  for (const node of nodes) {
+    if (node.children && node.children.length > 0) {
+      sortTreeNodes(node.children);
+    }
+  }
+}
