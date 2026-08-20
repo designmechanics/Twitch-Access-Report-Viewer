@@ -10,7 +10,9 @@ import {
   ExternalLink,
   X,
   Clock,
-  Award
+  Award,
+  Smile,
+  Zap
 } from 'lucide-react';
 import gsap from 'gsap';
 import { ParsedCsvData, ChartStyle } from '../types';
@@ -40,6 +42,10 @@ interface ChatRecord {
   rawRow: Record<string, any>;
 }
 
+const STOP_WORDS = new Set([
+  'the', 'be', 'to', 'of', 'and', 'a', 'in', 'that', 'have', 'i', 'it', 'for', 'not', 'on', 'with', 'he', 'as', 'you', 'do', 'at', 'this', 'but', 'his', 'by', 'from', 'they', 'we', 'say', 'her', 'she', 'or', 'an', 'will', 'my', 'one', 'all', 'would', 'there', 'their', 'what', 'so', 'up', 'out', 'if', 'about', 'who', 'get', 'which', 'go', 'me', 'when', 'make', 'can', 'like', 'time', 'no', 'just', 'him', 'know', 'take', 'people', 'into', 'year', 'your', 'good', 'some', 'could', 'them', 'see', 'other', 'than', 'then', 'now', 'look', 'only', 'come', 'its', 'over', 'think', 'also', 'back', 'after', 'use', 'two', 'how', 'our', 'work', 'first', 'well', 'way', 'even', 'new', 'want', 'because', 'any', 'these', 'give', 'day', 'most', 'us', 'is', 'are', 'was', 'were', 'been', 'has', 'had', 'did', 'does'
+]);
+
 export const ChatReportView: React.FC<ChatReportViewProps> = ({
   data,
   fileName,
@@ -50,7 +56,7 @@ export const ChatReportView: React.FC<ChatReportViewProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [channelFilter, setChannelFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [chartDimension, setChartDimension] = useState<'channels' | 'timeline' | 'hourOfDay'>('channels');
+  const [chartDimension, setChartDimension] = useState<'channels' | 'timeline' | 'hourOfDay' | 'emotes'>('channels');
   const [selectedRecord, setSelectedRecord] = useState<ChatRecord | null>(null);
 
   // GSAP Stagger Reveal
@@ -114,9 +120,22 @@ export const ChatReportView: React.FC<ChatReportViewProps> = ({
     const channelCounts: Record<string, number> = {};
     const dateCounts: Record<string, number> = {};
     const hourCounts: Record<number, number> = {};
+    const wordCounts: Record<string, number> = {};
 
     for (const r of records) {
       channelCounts[r.channel] = (channelCounts[r.channel] || 0) + 1;
+
+      // Extract words / emotes
+      const tokens = r.content.split(/\s+/);
+      for (const rawToken of tokens) {
+        const token = rawToken.replace(/^[^\w]+|[^\w]+$/g, '');
+        if (token.length >= 2) {
+          const lower = token.toLowerCase();
+          if (!STOP_WORDS.has(lower)) {
+            wordCounts[token] = (wordCounts[token] || 0) + 1;
+          }
+        }
+      }
 
       if (r.date) {
         try {
@@ -136,6 +155,10 @@ export const ChatReportView: React.FC<ChatReportViewProps> = ({
     const sortedChannels = Object.entries(channelCounts).sort((a, b) => b[1] - a[1]);
     const topChannel = sortedChannels[0] ? sortedChannels[0][0] : 'None';
     const topChannelCount = sortedChannels[0] ? sortedChannels[0][1] : 0;
+
+    const topWords = Object.entries(wordCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 25);
 
     // Channel chart points
     const channelChartData: ChartDataPoint[] = sortedChannels.slice(0, 20).map(([ch, count], i) => ({
@@ -166,15 +189,24 @@ export const ChatReportView: React.FC<ChatReportViewProps> = ({
       };
     });
 
+    // Emotes / Keywords chart points
+    const emoteChartData: ChartDataPoint[] = topWords.map(([word, count]) => ({
+      label: word,
+      value: count,
+      category: `Used ${count.toLocaleString()} times in chat`
+    }));
+
     return {
       total,
       uniqueChannels: channels.length,
       topChannel,
       topChannelCount,
       sortedChannels,
+      topWords,
       channelChartData,
       timelineChartData,
-      hourChartData
+      hourChartData,
+      emoteChartData
     };
   }, [records, channels]);
 
@@ -183,6 +215,8 @@ export const ChatReportView: React.FC<ChatReportViewProps> = ({
       ? stats.channelChartData
       : chartDimension === 'timeline'
       ? stats.timelineChartData
+      : chartDimension === 'emotes'
+      ? stats.emoteChartData
       : stats.hourChartData;
 
   const activeChartTitle =
@@ -190,6 +224,8 @@ export const ChatReportView: React.FC<ChatReportViewProps> = ({
       ? 'Top Streamer Channels by Chat Frequency (3D)'
       : chartDimension === 'timeline'
       ? 'Chat Volume Over Time (Timeline)'
+      : chartDimension === 'emotes'
+      ? 'Top Emotes & Chat Keywords Frequency'
       : 'Hourly Activity Heatmap (24-Hour Distribution)';
 
   return (
@@ -230,21 +266,20 @@ export const ChatReportView: React.FC<ChatReportViewProps> = ({
 
         <div className="rounded-xl border border-white/10 bg-[#18181B] p-3.5">
           <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">
-            Community Loyalty
+            Top Emote / Term
           </p>
-          <p className="text-xl font-mono font-bold text-emerald-400 mt-1">
-            {stats.total > 0
-              ? Math.round((stats.topChannelCount / stats.total) * 100)
-              : 0}
-            %
+          <p className="text-xl font-mono font-bold text-emerald-400 mt-1 truncate" title={stats.topWords[0]?.[0] || 'N/A'}>
+            {stats.topWords[0]?.[0] || 'N/A'}
           </p>
-          <p className="text-[11px] font-mono text-gray-400 mt-0.5">In primary chat</p>
+          <p className="text-[11px] font-mono text-gray-400 mt-0.5">
+            {stats.topWords[0]?.[1]?.toLocaleString() || 0} occurrences
+          </p>
         </div>
       </div>
 
       {/* 3D / Bar / Scatter / Trendline Chart */}
       <div className="stagger-card space-y-2">
-        <div className="flex items-center gap-1 bg-black/40 p-1.5 rounded-lg border border-white/10 text-xs font-mono w-fit">
+        <div className="flex flex-wrap items-center gap-1 bg-black/40 p-1.5 rounded-lg border border-white/10 text-xs font-mono w-fit">
           <button
             onClick={() => setChartDimension('channels')}
             className={`cursor-pointer px-3 py-1 rounded transition-colors ${
@@ -266,6 +301,16 @@ export const ChatReportView: React.FC<ChatReportViewProps> = ({
             Chat Timeline
           </button>
           <button
+            onClick={() => setChartDimension('emotes')}
+            className={`cursor-pointer px-3 py-1 rounded transition-colors ${
+              chartDimension === 'emotes'
+                ? 'bg-[#9146FF] text-white font-bold'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            Emotes & Terms
+          </button>
+          <button
             onClick={() => setChartDimension('hourOfDay')}
             className={`cursor-pointer px-3 py-1 rounded transition-colors ${
               chartDimension === 'hourOfDay'
@@ -281,7 +326,7 @@ export const ChatReportView: React.FC<ChatReportViewProps> = ({
           data={activeChartData}
           title={activeChartTitle}
           yAxisLabel="Messages"
-          metricLabel="Messages"
+          metricLabel="Count"
           defaultStyle={defaultChartStyle}
           height={320}
           colorTheme={colorTheme}
@@ -323,6 +368,93 @@ export const ChatReportView: React.FC<ChatReportViewProps> = ({
               </option>
             ))}
           </select>
+        </div>
+      </div>
+
+      {/* Top Chat Rooms & Emotes Summary */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 stagger-card">
+        {/* Top Channels */}
+        <div className="overflow-hidden rounded-xl border border-white/10 bg-[#18181B]">
+          <div className="bg-[#252529] px-4 py-3 border-b border-white/10 flex items-center justify-between">
+            <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+              <Radio className="w-3.5 h-3.5 text-[#9146FF]" />
+              <span>Top Streamer Chat Rooms</span>
+            </h3>
+            <span className="text-[10px] text-gray-400 font-mono">
+              {stats.sortedChannels.length} Channels
+            </span>
+          </div>
+          <div className="max-h-[300px] overflow-y-auto divide-y divide-white/5 scrollbar-thin scrollbar-thumb-white/10">
+            {stats.sortedChannels.slice(0, 20).map(([ch, count], idx) => {
+              const maxVal = stats.sortedChannels[0]?.[1] || 1;
+              const pct = Math.round((count / maxVal) * 100);
+              const avatarColor = getStreamerAvatarColor(ch);
+
+              return (
+                <div
+                  key={idx}
+                  onClick={() => setChannelFilter(ch)}
+                  className="px-4 py-2.5 flex items-center justify-between hover:bg-white/5 transition-colors cursor-pointer group"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="text-xs font-mono text-gray-500 w-5">{idx + 1}</span>
+                    <div
+                      className={`w-6 h-6 rounded bg-gradient-to-br ${avatarColor} flex items-center justify-center text-white font-bold text-[10px] shrink-0`}
+                    >
+                      {ch.slice(0, 2).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-xs font-bold text-white truncate font-sans group-hover:text-[#bf94ff] transition-colors block">
+                        #{ch}
+                      </span>
+                      <div className="w-28 sm:w-40 bg-white/5 h-1.5 rounded-full overflow-hidden mt-1">
+                        <div
+                          className="bg-[#9146FF] h-full rounded-full transition-all"
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="text-right shrink-0 pl-3">
+                    <div className="text-xs font-bold font-mono text-white">
+                      {count.toLocaleString()}
+                    </div>
+                    <div className="text-[10px] font-mono text-gray-500">
+                      {stats.total > 0 ? ((count / stats.total) * 100).toFixed(1) : 0}%
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Top Emotes & Words */}
+        <div className="overflow-hidden rounded-xl border border-white/10 bg-[#18181B]">
+          <div className="bg-[#252529] px-4 py-3 border-b border-white/10 flex items-center justify-between">
+            <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+              <Smile className="w-3.5 h-3.5 text-amber-400" />
+              <span>Top Emotes & Chat Vocabulary</span>
+            </h3>
+            <span className="text-[10px] text-gray-400 font-mono">
+              {stats.topWords.length} Detected
+            </span>
+          </div>
+          <div className="p-4 flex flex-wrap gap-2 max-h-[300px] overflow-y-auto scrollbar-thin scrollbar-thumb-white/10">
+            {stats.topWords.map(([word, count], idx) => (
+              <button
+                key={idx}
+                onClick={() => setSearchQuery(word)}
+                className="cursor-pointer px-3 py-1.5 rounded-lg bg-white/5 hover:bg-[#9146FF]/20 border border-white/10 hover:border-[#9146FF]/40 text-xs font-mono text-gray-200 hover:text-white flex items-center gap-2 transition-all"
+              >
+                <span className="font-bold text-[#bf94ff]">{word}</span>
+                <span className="px-1.5 py-0.2 rounded bg-white/10 text-[10px] text-gray-400">
+                  {count}
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -378,13 +510,13 @@ export const ChatReportView: React.FC<ChatReportViewProps> = ({
                     <td className="p-3 text-gray-200 font-sans break-words max-w-lg">
                       {row.content}
                     </td>
-                    <td className="p-3 text-right">
+                    <td className="p-3 text-right whitespace-nowrap">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           setSelectedRecord(row);
                         }}
-                        className="cursor-pointer px-2 py-0.5 rounded bg-white/5 hover:bg-[#9146FF] text-gray-300 hover:text-white text-[11px] font-sans"
+                        className="cursor-pointer px-2 py-0.5 rounded bg-white/5 hover:bg-[#9146FF] text-gray-300 hover:text-white text-[11px] font-sans transition-colors"
                       >
                         Inspect
                       </button>
@@ -397,7 +529,7 @@ export const ChatReportView: React.FC<ChatReportViewProps> = ({
         </div>
       </div>
 
-      {/* Inspector Modal */}
+      {/* Record Inspector Modal */}
       {selectedRecord && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
           <div className="relative w-full max-w-lg bg-[#18181B] border border-white/15 rounded-2xl shadow-2xl overflow-hidden">
@@ -425,12 +557,12 @@ export const ChatReportView: React.FC<ChatReportViewProps> = ({
               </button>
             </div>
 
-            <div className="p-5 space-y-3 font-mono text-xs text-gray-300">
-              <div className="p-3 bg-[#121214] border border-white/5 rounded-xl">
-                <span className="text-[10px] text-gray-500 uppercase font-bold block mb-1">
-                  Full Chat Message
+            <div className="p-5 space-y-4 font-mono text-xs text-gray-300">
+              <div className="p-4 bg-[#121214] border border-white/5 rounded-xl">
+                <span className="text-[10px] text-gray-500 uppercase font-bold block mb-2">
+                  Message Content
                 </span>
-                <p className="text-sm text-white font-sans leading-relaxed">
+                <p className="text-sm text-white font-sans leading-relaxed break-words">
                   "{selectedRecord.content}"
                 </p>
               </div>

@@ -31,7 +31,9 @@ export default function App() {
     userDetails: '3d',
     generic: 'bar',
     animateReveal: true,
-    colorTheme: 'twitch'
+    colorTheme: 'twitch',
+    auditSampleSize: 15,
+    auditShowAll: false
   });
 
   useEffect(() => {
@@ -170,6 +172,7 @@ export default function App() {
                 onSelectOverview={handleSelectOverview}
                 populatedCount={stats.populatedFilesCount}
                 totalFilesCount={stats.totalFiles}
+                colorTheme={chartSettings.colorTheme}
               />
             )}
             <ReportViewer

@@ -16,18 +16,27 @@ import { formatBytes } from '../utils/twitchCategories';
 interface FileTreeSidebarProps {
   tree: FileTreeNode[];
   selectedFile: ZipFileEntry | null;
-  onSelectFile: (file: ZipFileEntry) => void;
-  categories: { name: string; count: number }[];
+  onSelectFile: (file: ZipFileEntry | null) => void;
+  categories: { name: string; count: number; populatedCount?: number }[];
+  isOverviewSelected: boolean;
+  onSelectOverview: () => void;
+  populatedCount?: number;
+  totalFilesCount?: number;
 }
 
 export const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
   tree,
   selectedFile,
   onSelectFile,
-  categories
+  categories,
+  isOverviewSelected,
+  onSelectOverview,
+  populatedCount = 0,
+  totalFilesCount = 0
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [populatedOnly, setPopulatedOnly] = useState(false);
   const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = {};
     const markExpanded = (nodes: FileTreeNode[]) => {
@@ -78,7 +87,9 @@ export const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
         selectedCategory === 'all' ||
         node.fileEntry.category.toLowerCase() === selectedCategory.toLowerCase();
 
-      return matchSearch && matchCategory;
+      const matchPopulated = !populatedOnly || !!node.isPopulated;
+
+      return matchSearch && matchCategory && matchPopulated;
     }
 
     if (node.isDir && node.children) {
@@ -130,7 +141,7 @@ export const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
             <span className="truncate">{node.name}</span>
             {node.children && (
               <span className="ml-auto text-[10px] font-mono text-gray-500">
-                {node.children.length}
+                {node.children.filter(c => isNodeMatching(c)).length}
               </span>
             )}
           </div>
@@ -144,7 +155,8 @@ export const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
       );
     }
 
-    const isSelected = selectedFile?.path === node.path;
+    const isSelected = !isOverviewSelected && selectedFile?.path === node.path;
+    const isPopulated = !!node.isPopulated;
 
     return (
       <div
@@ -152,7 +164,7 @@ export const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
         onClick={() => node.fileEntry && onSelectFile(node.fileEntry)}
         className={`flex items-center justify-between gap-2 rounded px-2 py-1.5 text-xs cursor-pointer transition-colors ${
           isSelected
-            ? 'text-[#9146FF] bg-white/5 font-semibold'
+            ? 'text-white bg-[#9146FF]/20 border border-[#9146FF]/40 font-semibold'
             : 'text-gray-400 hover:bg-white/5 hover:text-gray-200'
         }`}
       >
@@ -162,23 +174,51 @@ export const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
-          {node.size !== undefined && (
+          {node.rowCount !== undefined ? (
+            isPopulated ? (
+              <span className="text-[10px] font-mono font-bold text-emerald-400 px-1.5 py-0.2 rounded bg-emerald-950/60 border border-emerald-800/40">
+                {node.rowCount.toLocaleString()}
+              </span>
+            ) : (
+              <span className="text-[9px] font-mono text-gray-600">
+                0
+              </span>
+            )
+          ) : node.size !== undefined ? (
             <span className="text-[10px] font-mono text-gray-500">
               {formatBytes(node.size, 0)}
             </span>
-          )}
+          ) : null}
         </div>
       </div>
     );
   };
 
   return (
-    <aside className="w-72 flex-shrink-0 border-r border-white/10 bg-[#121214] p-4 flex flex-col h-[calc(100vh-64px)] overflow-hidden select-none">
+    <aside className="w-72 flex-shrink-0 border-r border-white/10 bg-[#121214] p-3.5 flex flex-col h-[calc(100vh-64px)] overflow-hidden select-none">
       {/* Explorer Header */}
-      <div className="mb-4 space-y-3">
-        <div className="flex items-center justify-between px-1">
+      <div className="mb-3 space-y-2.5">
+        {/* Global Archive Overview Button */}
+        <button
+          onClick={onSelectOverview}
+          className={`cursor-pointer w-full flex items-center justify-between p-2.5 rounded-lg border text-xs font-semibold transition-all ${
+            isOverviewSelected
+              ? 'bg-[#9146FF] text-white border-[#9146FF] shadow-sm'
+              : 'bg-white/5 hover:bg-white/10 text-gray-200 border-white/10'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <Layers className="w-4 h-4 text-amber-400" />
+            <span>Archive Summary</span>
+          </div>
+          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-black/30 text-gray-300">
+            {populatedCount}/{totalFilesCount} active
+          </span>
+        </button>
+
+        <div className="flex items-center justify-between px-1 pt-1">
           <h2 className="text-[10px] font-bold uppercase tracking-widest text-gray-500">
-            File Explorer
+            Archive Explorer
           </h2>
           <div className="flex items-center gap-2 text-[10px] text-gray-500">
             <button
@@ -209,6 +249,30 @@ export const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
           />
         </div>
 
+        {/* Data Filter Toggle */}
+        <div className="flex items-center justify-between gap-1 p-1 bg-white/5 rounded border border-white/10 text-[11px]">
+          <button
+            onClick={() => setPopulatedOnly(false)}
+            className={`flex-1 py-1 rounded text-center transition-colors cursor-pointer ${
+              !populatedOnly
+                ? 'bg-[#9146FF] text-white font-bold shadow-sm'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            All Files ({totalFilesCount})
+          </button>
+          <button
+            onClick={() => setPopulatedOnly(true)}
+            className={`flex-1 py-1 rounded text-center transition-colors cursor-pointer flex items-center justify-center gap-1 ${
+              populatedOnly
+                ? 'bg-emerald-600 text-white font-bold shadow-sm'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <span>Has Data ({populatedCount})</span>
+          </button>
+        </div>
+
         {/* Categories Bar */}
         <div className="flex items-center gap-1 overflow-x-auto pb-1 text-[10px] scrollbar-none">
           <button
@@ -219,7 +283,7 @@ export const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
                 : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
             }`}
           >
-            All
+            All Categories
           </button>
           {categories.map((c) => (
             <button
@@ -232,6 +296,11 @@ export const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
               }`}
             >
               <span>{c.name}</span>
+              {c.populatedCount !== undefined && c.populatedCount > 0 && (
+                <span className="text-[9px] font-mono text-emerald-400 font-bold">
+                  ({c.populatedCount})
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -247,15 +316,19 @@ export const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
       </div>
 
       {/* Selected File Footer Info */}
-      {selectedFile && (
-        <div className="mt-3 pt-3 border-t border-white/10 text-xs">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-1">
+      {selectedFile && !isOverviewSelected && (
+        <div className="mt-2 pt-2.5 border-t border-white/10 text-xs shrink-0">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-0.5">
             Active Dataset
           </p>
-          <div className="font-mono text-gray-200 truncate">{selectedFile.name}</div>
+          <div className="font-mono text-gray-200 truncate font-semibold">{selectedFile.name}</div>
           <div className="flex items-center justify-between text-[10px] font-mono text-gray-500 mt-1">
             <span>{selectedFile.category}</span>
-            <span>{formatBytes(selectedFile.size)}</span>
+            <span className={selectedFile.isPopulated ? 'text-emerald-400 font-bold' : ''}>
+              {selectedFile.isPopulated
+                ? `${(selectedFile.rowCount || 0).toLocaleString()} rows`
+                : '0 rows (empty)'}
+            </span>
           </div>
         </div>
       )}

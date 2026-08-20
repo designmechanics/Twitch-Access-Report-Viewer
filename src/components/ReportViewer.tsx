@@ -56,7 +56,9 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
     userDetails: '3d',
     generic: 'bar',
     animateReveal: true,
-    colorTheme: 'twitch'
+    colorTheme: 'twitch',
+    auditSampleSize: 15,
+    auditShowAll: false
   }
 }) => {
   const [viewMode, setViewMode] = useState<ViewMode>('report');
@@ -206,6 +208,8 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
             defaultChartStyle={chartSettings.watchTime}
             animateReveal={chartSettings.animateReveal}
             colorTheme={chartSettings.colorTheme}
+            auditSampleSize={chartSettings.auditSampleSize}
+            auditShowAll={chartSettings.auditShowAll}
           />
         );
       }

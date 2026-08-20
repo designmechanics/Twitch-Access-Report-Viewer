@@ -22,6 +22,7 @@ interface FileTreeSidebarProps {
   onSelectOverview: () => void;
   populatedCount?: number;
   totalFilesCount?: number;
+  colorTheme?: 'twitch' | 'cyberpunk' | 'emerald' | 'amber';
 }
 
 export const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
@@ -32,7 +33,8 @@ export const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
   isOverviewSelected,
   onSelectOverview,
   populatedCount = 0,
-  totalFilesCount = 0
+  totalFilesCount = 0,
+  colorTheme = 'twitch'
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -99,7 +101,10 @@ export const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
     return false;
   };
 
-  const renderFileIcon = (extension?: string) => {
+  const renderFileIcon = (extension?: string, isSelected?: boolean) => {
+    if (isSelected) {
+      return <FileText className="w-3.5 h-3.5 text-white shrink-0 drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]" />;
+    }
     switch (extension?.toLowerCase()) {
       case 'csv':
         return <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400 shrink-0" />;
@@ -107,6 +112,20 @@ export const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
         return <FileCode className="w-3.5 h-3.5 text-amber-400 shrink-0" />;
       default:
         return <FileText className="w-3.5 h-3.5 text-sky-400 shrink-0" />;
+    }
+  };
+
+  const getThemeBrightSelectedClasses = (theme?: 'twitch' | 'cyberpunk' | 'emerald' | 'amber' | string) => {
+    switch (theme) {
+      case 'cyberpunk':
+        return 'bg-[#00f0ff] border-[#00f0ff] shadow-md shadow-[#00f0ff]/20';
+      case 'emerald':
+        return 'bg-[#10b981] border-[#10b981] shadow-md shadow-[#10b981]/20';
+      case 'amber':
+        return 'bg-[#f59e0b] border-[#f59e0b] shadow-md shadow-[#f59e0b]/20';
+      case 'twitch':
+      default:
+        return 'bg-[#9146FF] border-[#9146FF] shadow-md shadow-[#9146FF]/20';
     }
   };
 
@@ -122,19 +141,19 @@ export const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
             onClick={() => toggleFolder(node.path)}
             className={`flex items-center gap-2 rounded px-2 py-1.5 text-xs font-medium cursor-pointer transition-colors ${
               isExpanded
-                ? 'text-white bg-[#9146FF]/10'
+                ? 'text-gray-200 bg-white/5 border border-white/5'
                 : 'text-gray-400 hover:bg-white/5 hover:text-gray-200'
             }`}
           >
             <span className="text-gray-500">
               {isExpanded ? (
-                <ChevronDown className="w-3 h-3" />
+                <ChevronDown className="w-3 h-3 text-gray-400" />
               ) : (
-                <ChevronRight className="w-3 h-3" />
+                <ChevronRight className="w-3 h-3 text-gray-500" />
               )}
             </span>
             {isExpanded ? (
-              <FolderOpen className="w-3.5 h-3.5 text-[#9146FF] shrink-0" />
+              <FolderOpen className="w-3.5 h-3.5 text-amber-400/90 shrink-0" />
             ) : (
               <Folder className="w-3.5 h-3.5 text-gray-500 shrink-0" />
             )}
@@ -162,30 +181,52 @@ export const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
       <div
         key={node.path}
         onClick={() => node.fileEntry && onSelectFile(node.fileEntry)}
-        className={`flex items-center justify-between gap-2 rounded px-2 py-1.5 text-xs cursor-pointer transition-colors ${
+        className={`flex items-center justify-between gap-2 rounded px-2 py-1.5 text-xs cursor-pointer border transition-all ${
           isSelected
-            ? 'text-white bg-[#9146FF]/20 border border-[#9146FF]/40 font-semibold'
-            : 'text-gray-400 hover:bg-white/5 hover:text-gray-200'
+            ? `${getThemeBrightSelectedClasses(colorTheme)} text-white font-semibold`
+            : 'border-transparent text-gray-400 hover:bg-white/5 hover:text-gray-200'
         }`}
       >
         <div className="flex items-center gap-2 min-w-0">
-          {renderFileIcon(node.extension)}
-          <span className="truncate">{node.name}</span>
+          {renderFileIcon(node.extension, isSelected)}
+          <span
+            className={`truncate ${
+              isSelected
+                ? 'text-white font-bold [text-shadow:_0_1px_1.5px_rgba(0,0,0,0.95),_0_2px_4px_rgba(0,0,0,0.95)] drop-shadow-[0_1.5px_1.5px_rgba(0,0,0,0.95)]'
+                : ''
+            }`}
+          >
+            {node.name}
+          </span>
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
           {node.rowCount !== undefined ? (
             isPopulated ? (
-              <span className="text-[10px] font-mono font-bold text-emerald-400 px-1.5 py-0.2 rounded bg-emerald-950/60 border border-emerald-800/40">
+              <span
+                className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded border transition-colors ${
+                  isSelected
+                    ? 'bg-black/40 text-white border-black/30 [text-shadow:_0_1px_1px_rgba(0,0,0,0.95)]'
+                    : 'text-emerald-400 bg-emerald-950/60 border-emerald-800/40'
+                }`}
+              >
                 {node.rowCount.toLocaleString()}
               </span>
             ) : (
-              <span className="text-[9px] font-mono text-gray-600">
+              <span
+                className={`text-[9px] font-mono ${
+                  isSelected ? 'text-black/60 font-semibold' : 'text-gray-600'
+                }`}
+              >
                 0
               </span>
             )
           ) : node.size !== undefined ? (
-            <span className="text-[10px] font-mono text-gray-500">
+            <span
+              className={`text-[10px] font-mono ${
+                isSelected ? 'text-white/90 [text-shadow:_0_1px_1px_rgba(0,0,0,0.95)]' : 'text-gray-500'
+              }`}
+            >
               {formatBytes(node.size, 0)}
             </span>
           ) : null}
@@ -203,15 +244,29 @@ export const FileTreeSidebar: React.FC<FileTreeSidebarProps> = ({
           onClick={onSelectOverview}
           className={`cursor-pointer w-full flex items-center justify-between p-2.5 rounded-lg border text-xs font-semibold transition-all ${
             isOverviewSelected
-              ? 'bg-[#9146FF] text-white border-[#9146FF] shadow-sm'
+              ? `${getThemeBrightSelectedClasses(colorTheme)} text-white`
               : 'bg-white/5 hover:bg-white/10 text-gray-200 border-white/10'
           }`}
         >
           <div className="flex items-center gap-2">
             <Layers className="w-4 h-4 text-amber-400" />
-            <span>Archive Summary</span>
+            <span
+              className={
+                isOverviewSelected
+                  ? 'font-bold [text-shadow:_0_1px_1.5px_rgba(0,0,0,0.95),_0_2px_4px_rgba(0,0,0,0.95)] drop-shadow-[0_1.5px_1.5px_rgba(0,0,0,0.95)]'
+                  : ''
+              }
+            >
+              Archive Summary
+            </span>
           </div>
-          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-black/30 text-gray-300">
+          <span
+            className={`text-[10px] font-mono px-1.5 py-0.5 rounded transition-colors ${
+              isOverviewSelected
+                ? 'bg-black/40 text-white border border-black/30 [text-shadow:_0_1px_1px_rgba(0,0,0,0.95)]'
+                : 'bg-black/30 text-gray-300'
+            }`}
+          >
             {populatedCount}/{totalFilesCount} active
           </span>
         </button>

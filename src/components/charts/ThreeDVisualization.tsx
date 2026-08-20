@@ -81,16 +81,16 @@ export const ThreeDVisualization: React.FC<ThreeDVisualizationProps> = ({
     dirLight.castShadow = true;
     scene.add(dirLight);
 
-    const purplePointLight = new THREE.PointLight(colors[0], 2.5, 50);
-    purplePointLight.position.set(-10, 10, 10);
-    scene.add(purplePointLight);
+    const themePointLight = new THREE.PointLight(colors[0], 2.5, 50);
+    themePointLight.position.set(-10, 10, 10);
+    scene.add(themePointLight);
 
-    const cyanPointLight = new THREE.PointLight(0x38bdf8, 1.5, 50);
-    cyanPointLight.position.set(10, 10, -10);
-    scene.add(cyanPointLight);
+    const secondaryPointLight = new THREE.PointLight(colors[1] || 0x38bdf8, 1.5, 50);
+    secondaryPointLight.position.set(10, 10, -10);
+    scene.add(secondaryPointLight);
 
     // Grid Floor
-    const gridHelper = new THREE.GridHelper(24, 16, 0x9146ff, 0x27272a);
+    const gridHelper = new THREE.GridHelper(24, 16, colors[0], 0x27272a);
     gridHelper.position.y = 0;
     scene.add(gridHelper);
 

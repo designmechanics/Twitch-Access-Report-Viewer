@@ -60,6 +60,8 @@ export interface SectionChartSettings {
   generic: ChartStyle;
   animateReveal: boolean;
   colorTheme: 'twitch' | 'cyberpunk' | 'emerald' | 'amber';
+  auditSampleSize: number;
+  auditShowAll: boolean;
 }
 
 export interface TwitchReportStats {

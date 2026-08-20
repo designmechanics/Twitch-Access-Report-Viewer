@@ -47,6 +47,21 @@ export interface ParsedJsonData {
 
 export type ViewMode = 'report' | 'table' | 'raw';
 
+export type ChartStyle = '3d' | 'bar' | 'scatter' | 'line';
+
+export interface SectionChartSettings {
+  chat: ChartStyle;
+  watchTime: ChartStyle;
+  subscriptions: ChartStyle;
+  bits: ChartStyle;
+  security: ChartStyle;
+  channelPoints: ChartStyle;
+  userDetails: ChartStyle;
+  generic: ChartStyle;
+  animateReveal: boolean;
+  colorTheme: 'twitch' | 'cyberpunk' | 'emerald' | 'amber';
+}
+
 export interface TwitchReportStats {
   totalFiles: number;
   totalSize: number;

@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Header } from './components/Header';
 import { ZipDropzone } from './components/ZipDropzone';
 import { FileTreeSidebar } from './components/FileTreeSidebar';
 import { ReportViewer } from './components/ReportViewer';
-import { FileTreeNode, ZipFileEntry, TwitchReportStats } from './types';
+import { SettingsModal } from './components/SettingsModal';
+import { FileTreeNode, ZipFileEntry, TwitchReportStats, SectionChartSettings } from './types';
 import { parseTwitchZip } from './utils/zipParser';
 
 export default function App() {
@@ -11,10 +12,32 @@ export default function App() {
   const [entries, setEntries] = useState<ZipFileEntry[]>([]);
   const [stats, setStats] = useState<TwitchReportStats | null>(null);
   const [selectedFile, setSelectedFile] = useState<ZipFileEntry | null>(null);
+  const [isOverviewSelected, setIsOverviewSelected] = useState(false);
   const [archiveName, setArchiveName] = useState<string | null>(null);
   const [archiveHash, setArchiveHash] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  // Global Section Chart Settings
+  const [chartSettings, setChartSettings] = useState<SectionChartSettings>({
+    chat: '3d',
+    watchTime: 'line',
+    subscriptions: 'bar',
+    bits: '3d',
+    security: 'scatter',
+    channelPoints: '3d',
+    userDetails: '3d',
+    generic: 'bar',
+    animateReveal: true,
+    colorTheme: 'twitch'
+  });
+
+  useEffect(() => {
+    const theme = chartSettings.colorTheme || 'twitch';
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [chartSettings.colorTheme]);
 
   const processZip = async (fileOrBlob: File | Blob, name?: string) => {
     try {
@@ -40,15 +63,31 @@ export default function App() {
         'financials/bits_cheers.csv'
       ];
 
+      // First try to find a populated file matching priority order
       let defaultSelection = parsed.entries.find((e) =>
-        priorityOrder.some((p) => e.path.toLowerCase().includes(p.toLowerCase()))
+        e.isPopulated && priorityOrder.some((p) => e.path.toLowerCase().includes(p.toLowerCase()))
       );
 
+      // If none found, find ANY populated file with largest rowCount
+      if (!defaultSelection) {
+        const populated = parsed.entries.filter((e) => e.isPopulated);
+        if (populated.length > 0) {
+          populated.sort((a, b) => (b.rowCount || 0) - (a.rowCount || 0));
+          defaultSelection = populated[0];
+        }
+      }
+
+      // If still none, fall back to first entry or overview
       if (!defaultSelection && parsed.entries.length > 0) {
         defaultSelection = parsed.entries[0];
       }
 
-      setSelectedFile(defaultSelection || null);
+      if (defaultSelection) {
+        setSelectedFile(defaultSelection);
+        setIsOverviewSelected(false);
+      } else {
+        setIsOverviewSelected(true);
+      }
     } catch (err: any) {
       console.error(err);
       setError(err.message || 'Failed to extract and read Twitch .zip archive.');
@@ -73,20 +112,36 @@ export default function App() {
     setEntries([]);
     setStats(null);
     setSelectedFile(null);
+    setIsOverviewSelected(false);
     setArchiveName(null);
     setArchiveHash(null);
     setError(null);
   };
 
+  const handleSelectFile = (file: ZipFileEntry | null) => {
+    setSelectedFile(file);
+    setIsOverviewSelected(false);
+  };
+
+  const handleSelectOverview = () => {
+    setIsOverviewSelected(true);
+  };
+
   return (
-    <div className="flex h-screen w-screen flex-col bg-[#0F0E11] font-sans text-gray-200 overflow-hidden select-none">
+    <div
+      data-theme={chartSettings.colorTheme || 'twitch'}
+      className="flex h-screen w-screen flex-col bg-[#0F0E11] font-sans text-gray-200 overflow-hidden select-none"
+    >
       <Header
         stats={stats}
-        currentFileName={selectedFile?.name || null}
+        currentFileName={isOverviewSelected ? 'Archive Summary' : (selectedFile?.name || null)}
         archiveName={archiveName}
         onFileUpload={handleFileUpload}
         onReset={handleReset}
         isLoading={isLoading}
+        isSidebarOpen={isSidebarOpen}
+        onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
+        onOpenSettings={() => setIsSettingsOpen(true)}
       />
 
       {error && (
@@ -105,15 +160,27 @@ export default function App() {
       <main className="flex flex-1 overflow-hidden min-h-0 w-full">
         {stats && tree.length > 0 ? (
           <>
-            <FileTreeSidebar
-              tree={tree}
-              selectedFile={selectedFile}
-              onSelectFile={setSelectedFile}
-              categories={stats.categories}
-            />
+            {isSidebarOpen && (
+              <FileTreeSidebar
+                tree={tree}
+                selectedFile={selectedFile}
+                onSelectFile={handleSelectFile}
+                categories={stats.categories}
+                isOverviewSelected={isOverviewSelected}
+                onSelectOverview={handleSelectOverview}
+                populatedCount={stats.populatedFilesCount}
+                totalFilesCount={stats.totalFiles}
+              />
+            )}
             <ReportViewer
               selectedFile={selectedFile}
               archiveName={archiveName}
+              stats={stats}
+              entries={entries}
+              onSelectFile={handleSelectFile}
+              isOverviewSelected={isOverviewSelected}
+              onSelectOverview={handleSelectOverview}
+              chartSettings={chartSettings}
             />
           </>
         ) : (
@@ -125,6 +192,14 @@ export default function App() {
           </div>
         )}
       </main>
+
+      {/* Visual Analytics & Settings Modal */}
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        settings={chartSettings}
+        onUpdateSettings={setChartSettings}
+      />
 
       {/* Professional Polish Footer */}
       <footer className="flex h-9 w-full items-center justify-between border-t border-white/10 bg-[#121214] px-6 text-[10px] text-gray-500 uppercase tracking-widest shrink-0 font-mono">

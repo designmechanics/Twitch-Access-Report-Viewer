@@ -9,7 +9,7 @@ import {
   Code2,
   FolderOpen
 } from 'lucide-react';
-import { ZipFileEntry, ViewMode, ParsedCsvData, ParsedJsonData } from '../types';
+import { ZipFileEntry, ViewMode, ParsedCsvData, ParsedJsonData, TwitchReportStats, SectionChartSettings } from '../types';
 import { formatBytes } from '../utils/twitchCategories';
 import { parseCsvContent, parseJsonContent } from '../utils/fileInterpreter';
 
@@ -24,12 +24,41 @@ import { GenericCsvReportView } from './GenericCsvReportView';
 import { JsonTreeViewer } from './JsonTreeViewer';
 import { RawTextViewer } from './RawTextViewer';
 
+import { ArchiveOverviewView } from './ArchiveOverviewView';
+import { EmptyDatasetView } from './EmptyDatasetView';
+
 interface ReportViewerProps {
   selectedFile: ZipFileEntry | null;
   archiveName?: string | null;
+  stats?: TwitchReportStats | null;
+  entries?: ZipFileEntry[];
+  onSelectFile?: (file: ZipFileEntry) => void;
+  isOverviewSelected?: boolean;
+  onSelectOverview?: () => void;
+  chartSettings?: SectionChartSettings;
 }
 
-export const ReportViewer: React.FC<ReportViewerProps> = ({ selectedFile, archiveName }) => {
+export const ReportViewer: React.FC<ReportViewerProps> = ({
+  selectedFile,
+  archiveName,
+  stats,
+  entries = [],
+  onSelectFile,
+  isOverviewSelected = false,
+  onSelectOverview,
+  chartSettings = {
+    chat: '3d',
+    watchTime: 'line',
+    subscriptions: 'bar',
+    bits: '3d',
+    security: 'scatter',
+    channelPoints: '3d',
+    userDetails: '3d',
+    generic: 'bar',
+    animateReveal: true,
+    colorTheme: 'twitch'
+  }
+}) => {
   const [viewMode, setViewMode] = useState<ViewMode>('report');
   const [rawText, setRawText] = useState<string>('');
   const [parsedCsv, setParsedCsv] = useState<ParsedCsvData | null>(null);
@@ -111,6 +140,20 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({ selectedFile, archiv
     URL.revokeObjectURL(url);
   };
 
+  // If Archive Overview is active or no file selected but we have stats
+  if ((isOverviewSelected || !selectedFile) && stats && entries.length > 0 && onSelectFile) {
+    return (
+      <section className="flex flex-1 flex-col overflow-y-auto bg-[#0F0E11] p-6 scrollbar-thin scrollbar-thumb-white/10">
+        <ArchiveOverviewView
+          stats={stats}
+          entries={entries}
+          archiveName={archiveName || null}
+          onSelectFile={onSelectFile}
+        />
+      </section>
+    );
+  }
+
   if (!selectedFile) {
     return (
       <section className="flex-1 flex flex-col items-center justify-center p-12 text-center text-gray-500 bg-[#0F0E11]">
@@ -133,30 +176,115 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({ selectedFile, archiv
 
   const renderInteractiveReport = () => {
     if (ext === 'csv' && parsedCsv) {
+      if (parsedCsv.rowCount === 0) {
+        return (
+          <EmptyDatasetView
+            file={selectedFile}
+            headers={parsedCsv.headers}
+            onViewRaw={() => setViewMode('raw')}
+            onBackToOverview={onSelectOverview}
+          />
+        );
+      }
+
       if (lowerPath.includes('chat') || lowerPath.includes('message')) {
-        return <ChatReportView data={parsedCsv} fileName={selectedFile.name} />;
+        return (
+          <ChatReportView
+            data={parsedCsv}
+            fileName={selectedFile.name}
+            defaultChartStyle={chartSettings.chat}
+            animateReveal={chartSettings.animateReveal}
+            colorTheme={chartSettings.colorTheme}
+          />
+        );
       }
       if (lowerPath.includes('watch') || lowerPath.includes('video') || lowerPath.includes('playback') || lowerPath.includes('stream')) {
-        return <WatchTimeReportView data={parsedCsv} fileName={selectedFile.name} />;
+        return (
+          <WatchTimeReportView
+            data={parsedCsv}
+            fileName={selectedFile.name}
+            defaultChartStyle={chartSettings.watchTime}
+            animateReveal={chartSettings.animateReveal}
+            colorTheme={chartSettings.colorTheme}
+          />
+        );
       }
       if (lowerPath.includes('sub')) {
-        return <SubscriptionsReportView data={parsedCsv} fileName={selectedFile.name} />;
+        return (
+          <SubscriptionsReportView
+            data={parsedCsv}
+            fileName={selectedFile.name}
+            defaultChartStyle={chartSettings.subscriptions}
+            animateReveal={chartSettings.animateReveal}
+            colorTheme={chartSettings.colorTheme}
+          />
+        );
       }
       if (lowerPath.includes('bit') || lowerPath.includes('cheer')) {
-        return <BitsReportView data={parsedCsv} fileName={selectedFile.name} />;
+        return (
+          <BitsReportView
+            data={parsedCsv}
+            fileName={selectedFile.name}
+            defaultChartStyle={chartSettings.bits}
+            animateReveal={chartSettings.animateReveal}
+            colorTheme={chartSettings.colorTheme}
+          />
+        );
       }
       if (lowerPath.includes('login') || lowerPath.includes('session') || lowerPath.includes('security') || lowerPath.includes('ip')) {
-        return <LoginHistoryReportView data={parsedCsv} fileName={selectedFile.name} />;
+        return (
+          <LoginHistoryReportView
+            data={parsedCsv}
+            fileName={selectedFile.name}
+            defaultChartStyle={chartSettings.security}
+            animateReveal={chartSettings.animateReveal}
+            colorTheme={chartSettings.colorTheme}
+          />
+        );
       }
       if (lowerPath.includes('point') || lowerPath.includes('reward') || lowerPath.includes('prediction')) {
-        return <ChannelPointsReportView data={parsedCsv} fileName={selectedFile.name} />;
+        return (
+          <ChannelPointsReportView
+            data={parsedCsv}
+            fileName={selectedFile.name}
+            defaultChartStyle={chartSettings.channelPoints}
+            animateReveal={chartSettings.animateReveal}
+            colorTheme={chartSettings.colorTheme}
+          />
+        );
       }
-      return <GenericCsvReportView data={parsedCsv} fileName={selectedFile.name} />;
+      return (
+        <GenericCsvReportView
+          data={parsedCsv}
+          fileName={selectedFile.name}
+          defaultChartStyle={chartSettings.generic}
+          animateReveal={chartSettings.animateReveal}
+          colorTheme={chartSettings.colorTheme}
+        />
+      );
     }
 
     if (ext === 'json' && parsedJson) {
+      if (parsedJson.itemCount === 0) {
+        return (
+          <EmptyDatasetView
+            file={selectedFile}
+            headers={[]}
+            onViewRaw={() => setViewMode('raw')}
+            onBackToOverview={onSelectOverview}
+          />
+        );
+      }
       if (lowerPath.includes('user') || lowerPath.includes('account') || lowerPath.includes('profile')) {
-        return <UserDetailsReportView data={parsedJson} fileName={selectedFile.name} />;
+        return (
+          <UserDetailsReportView
+            data={parsedJson}
+            fileName={selectedFile.name}
+            defaultChartStyle={chartSettings.userDetails}
+            animateReveal={chartSettings.animateReveal}
+            colorTheme={chartSettings.colorTheme}
+          />
+        );
       }
       return <JsonTreeViewer data={parsedJson} rawText={rawText} />;
     }
@@ -253,7 +381,13 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({ selectedFile, archiv
         ) : viewMode === 'report' ? (
           renderInteractiveReport()
         ) : viewMode === 'table' && parsedCsv ? (
-          <GenericCsvReportView data={parsedCsv} fileName={selectedFile.name} />
+          <GenericCsvReportView
+            data={parsedCsv}
+            fileName={selectedFile.name}
+            defaultChartStyle={chartSettings.generic}
+            animateReveal={chartSettings.animateReveal}
+            colorTheme={chartSettings.colorTheme}
+          />
         ) : (
           <RawTextViewer content={rawText} fileName={selectedFile.name} />
         )}

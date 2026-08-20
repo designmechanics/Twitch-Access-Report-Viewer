@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Sliders, Box, BarChart3, Dot, TrendingUp, Sparkles, Check, RotateCcw, Palette, Zap, Layers } from 'lucide-react';
+import { X, Sliders, Box, BarChart3, Dot, TrendingUp, Sparkles, Check, RotateCcw, Palette } from 'lucide-react';
 import { SectionChartSettings, ChartStyle } from '../types';
 
 interface SettingsModalProps {
@@ -38,20 +38,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     });
   };
 
-  const handleAuditSampleSizeChange = (val: number) => {
-    onUpdateSettings({
-      ...settings,
-      auditSampleSize: Math.max(10, Math.min(1000, val))
-    });
-  };
-
-  const handleAuditShowAllToggle = () => {
-    onUpdateSettings({
-      ...settings,
-      auditShowAll: !settings.auditShowAll
-    });
-  };
-
   const handleResetDefaults = () => {
     onUpdateSettings({
       chat: '3d',
@@ -63,9 +49,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       userDetails: 'bar',
       generic: '3d',
       animateReveal: true,
-      colorTheme: 'twitch',
-      auditSampleSize: 15,
-      auditShowAll: false
+      colorTheme: 'twitch'
     });
   };
 
@@ -175,98 +159,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </span>
               </button>
             </div>
-          </div>
-
-          {/* Inspector Audit Depth Configuration */}
-          <div className="rounded-xl border border-white/10 bg-[#18181B] p-4 space-y-3.5">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/5 pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="p-1.5 rounded-lg bg-[#9146FF]/20 border border-[#9146FF]/40 text-[#bf94ff]">
-                  <Zap className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="text-xs font-bold text-white">Playback Inspector Audit Depth</h3>
-                  <p className="text-[11px] text-gray-400 font-mono">
-                    Define row sample size for the logical duration step-by-step inspector
-                  </p>
-                </div>
-              </div>
-
-              {/* ALL Range Toggle */}
-              <button
-                onClick={handleAuditShowAllToggle}
-                className={`cursor-pointer px-3 py-1.5 rounded-lg border text-xs font-mono font-bold flex items-center gap-2 transition-all ${
-                  settings.auditShowAll
-                    ? 'border-cyan-500/60 bg-cyan-950/50 text-cyan-300 shadow-sm'
-                    : 'border-white/10 bg-white/5 text-gray-400 hover:text-gray-200'
-                }`}
-              >
-                <span>ALL Range (Entire Dataset)</span>
-                <span
-                  className={`w-3.5 h-3.5 rounded flex items-center justify-center text-[10px] ${
-                    settings.auditShowAll ? 'bg-cyan-400 text-black font-extrabold' : 'bg-white/10 text-gray-500'
-                  }`}
-                >
-                  {settings.auditShowAll && <Check className="w-2.5 h-2.5 stroke-[3]" />}
-                </span>
-              </button>
-            </div>
-
-            {/* Slider Widget Area */}
-            <div className={`space-y-3 transition-opacity ${settings.auditShowAll ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
-              <div className="flex items-center justify-between text-xs font-mono">
-                <span className="text-gray-400">Inspector Row Limit:</span>
-                <span className="font-bold text-[#bf94ff] px-2 py-0.5 rounded bg-[#9146FF]/20 border border-[#9146FF]/40">
-                  {settings.auditShowAll ? 'ALL (Unlimited)' : `${settings.auditSampleSize} Rows`}
-                </span>
-              </div>
-
-              <div className="space-y-1">
-                <input
-                  type="range"
-                  min={10}
-                  max={1000}
-                  step={5}
-                  value={settings.auditSampleSize}
-                  disabled={settings.auditShowAll}
-                  onChange={(e) => handleAuditSampleSizeChange(Number(e.target.value))}
-                  className="w-full h-1.5 bg-black/60 rounded-lg appearance-none cursor-pointer accent-[#9146FF] border border-white/10"
-                />
-                <div className="flex justify-between text-[10px] font-mono text-gray-500">
-                  <span>10 rows</span>
-                  <span>250</span>
-                  <span>500</span>
-                  <span>750</span>
-                  <span>1,000 rows</span>
-                </div>
-              </div>
-
-              {/* Quick Preset Buttons */}
-              <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                <span className="text-[10px] text-gray-500 font-mono mr-1">Presets:</span>
-                {[15, 25, 50, 100, 250, 500, 1000].map((preset) => (
-                  <button
-                    key={preset}
-                    disabled={settings.auditShowAll}
-                    onClick={() => handleAuditSampleSizeChange(preset)}
-                    className={`cursor-pointer px-2 py-0.5 rounded text-[10px] font-mono transition-all ${
-                      !settings.auditShowAll && settings.auditSampleSize === preset
-                        ? 'bg-[#9146FF] text-white font-bold'
-                        : 'bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white border border-white/5'
-                    }`}
-                  >
-                    {preset}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {settings.auditShowAll && (
-              <div className="p-2.5 rounded-lg bg-cyan-950/30 border border-cyan-500/30 text-[11px] text-cyan-300 font-mono flex items-center gap-2">
-                <Check className="w-3.5 h-3.5 shrink-0 text-cyan-400" />
-                <span>Slider disabled: Inspector will calculate and display all rows present in the active dataset.</span>
-              </div>
-            )}
           </div>
 
           {/* Per Section Chart Toggles */}

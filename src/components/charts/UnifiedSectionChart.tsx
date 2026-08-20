@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   BarChart,
   Bar,
@@ -43,6 +43,10 @@ export const UnifiedSectionChart: React.FC<UnifiedSectionChartProps> = ({
   showCategoryLegend = true
 }) => {
   const [currentStyle, setCurrentStyle] = useState<ChartStyle>(defaultStyle);
+
+  useEffect(() => {
+    setCurrentStyle(defaultStyle);
+  }, [defaultStyle]);
 
   const handleStyleSelect = (style: ChartStyle) => {
     setCurrentStyle(style);
