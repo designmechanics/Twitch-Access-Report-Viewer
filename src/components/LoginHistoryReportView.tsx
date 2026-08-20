@@ -22,6 +22,7 @@ interface LoginHistoryReportViewProps {
   defaultChartStyle?: ChartStyle;
   animateReveal?: boolean;
   colorTheme?: 'twitch' | 'cyberpunk' | 'emerald' | 'amber';
+  privacyScrub?: boolean;
 }
 
 interface LoginRecord {
@@ -40,7 +41,8 @@ export const LoginHistoryReportView: React.FC<LoginHistoryReportViewProps> = ({
   fileName,
   defaultChartStyle = 'scatter',
   animateReveal = true,
-  colorTheme = 'twitch'
+  colorTheme = 'twitch',
+  privacyScrub = false
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [chartDimension, setChartDimension] = useState<'timeline' | 'locations' | 'devices'>('timeline');
@@ -66,9 +68,18 @@ export const LoginHistoryReportView: React.FC<LoginHistoryReportViewProps> = ({
   const records: LoginRecord[] = useMemo(() => {
     return data.rows.map((r) => {
       const timestamp = String(r.login_timestamp || r.timestamp || r.date || '');
-      const ip = String(r.ip_address || r.ip || 'Unknown IP');
-      const city = r.city ? String(r.city).trim() : '';
-      const country = r.country ? String(r.country).trim() : '';
+      let ip = String(r.ip_address || r.ip || 'Unknown IP');
+      let city = r.city ? String(r.city).trim() : '';
+      let country = r.country ? String(r.country).trim() : '';
+      
+      if (privacyScrub) {
+        if (ip !== 'Unknown IP') {
+          ip = '***.***.***.***';
+        }
+        if (city) city = '[Hidden City]';
+        if (country) country = '[Hidden Country]';
+      }
+      
       const location = [city, country].filter(Boolean).join(', ') || 'Unknown Location';
       const clientType = String(r.client_type || r.device || r.browser || 'Web Browser').trim();
       const is2FA = r.two_factor_verified === true || String(r.two_factor_verified).toLowerCase() === 'true';
@@ -84,7 +95,7 @@ export const LoginHistoryReportView: React.FC<LoginHistoryReportViewProps> = ({
         rawRow: r
       };
     });
-  }, [data.rows]);
+  }, [data.rows, privacyScrub]);
 
   const stats = useMemo(() => {
     const locations = new Set<string>();

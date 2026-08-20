@@ -33,8 +33,29 @@ export default function App() {
     animateReveal: true,
     colorTheme: 'twitch',
     auditSampleSize: 15,
-    auditShowAll: false
+    auditShowAll: false,
+    privacyScrub: false
   });
+
+  // Extract user profile metadata if user_details.json is present in the archive
+  const userProfile = React.useMemo(() => {
+    const userDetailEntry = entries.find((e) =>
+      e.path.toLowerCase().includes('user_details.json') || e.name.toLowerCase() === 'user_details.json'
+    );
+    if (userDetailEntry && userDetailEntry.parsedData && userDetailEntry.parsedData.type === 'json') {
+      const data = userDetailEntry.parsedData.data || {};
+      const rawUsername = data.username || data.login || data.display_name || 'Twitch User';
+      const rawDisplayName = data.display_name || data.username || rawUsername;
+      return {
+        username: chartSettings.privacyScrub ? 'hidden_user' : rawUsername,
+        displayName: chartSettings.privacyScrub ? 'Anonymous_User' : rawDisplayName,
+        email: chartSettings.privacyScrub ? (data.email ? '******@***.com' : null) : (data.email || null),
+        partnerStatus: data.partner_status || data.broadcaster_type || 'Viewer',
+        profileImageUrl: chartSettings.privacyScrub ? null : (data.profile_image_url || data.logo || null)
+      };
+    }
+    return null;
+  }, [entries, chartSettings.privacyScrub]);
 
   useEffect(() => {
     const theme = chartSettings.colorTheme || 'twitch';
@@ -136,6 +157,7 @@ export default function App() {
     >
       <Header
         stats={stats}
+        userProfile={userProfile}
         currentFileName={isOverviewSelected ? 'Archive Summary' : (selectedFile?.name || null)}
         archiveName={archiveName}
         onFileUpload={handleFileUpload}
@@ -184,6 +206,7 @@ export default function App() {
               isOverviewSelected={isOverviewSelected}
               onSelectOverview={handleSelectOverview}
               chartSettings={chartSettings}
+              userProfile={userProfile}
             />
           </>
         ) : (

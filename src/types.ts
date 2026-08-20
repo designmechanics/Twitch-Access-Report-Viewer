@@ -62,6 +62,7 @@ export interface SectionChartSettings {
   colorTheme: 'twitch' | 'cyberpunk' | 'emerald' | 'amber';
   auditSampleSize: number;
   auditShowAll: boolean;
+  privacyScrub: boolean;
 }
 
 export interface TwitchReportStats {

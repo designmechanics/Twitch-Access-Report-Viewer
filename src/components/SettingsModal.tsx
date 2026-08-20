@@ -177,6 +177,39 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
           </div>
 
+          {/* Privacy Scrub Mode */}
+          <div className="rounded-xl border border-white/10 bg-[#18181B] p-4 space-y-2.5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 text-xs font-bold text-gray-200">
+                  <Layers className="w-4 h-4 text-rose-500" />
+                  <span>Privacy Scrub Mode</span>
+                </div>
+                <p className="text-[11px] text-gray-400 font-mono">
+                  Obscures IP addresses, real names, email addresses, and geo-coordinates across the interface for safe screenshots.
+                </p>
+              </div>
+
+              <button
+                onClick={() => onUpdateSettings({ ...settings, privacyScrub: !settings.privacyScrub })}
+                className={`shrink-0 cursor-pointer px-4 py-2 rounded-lg border text-xs font-mono font-bold flex items-center justify-between gap-3 transition-all sm:min-w-[140px] ${
+                  settings.privacyScrub
+                    ? 'border-rose-500/60 bg-rose-950/40 text-rose-300'
+                    : 'border-white/10 bg-white/5 text-gray-400'
+                }`}
+              >
+                <span>{settings.privacyScrub ? 'Scrub Enabled' : 'Scrub Disabled'}</span>
+                <span
+                  className={`w-4 h-4 rounded flex items-center justify-center ${
+                    settings.privacyScrub ? 'bg-rose-500 text-black' : 'bg-white/10 text-gray-500'
+                  }`}
+                >
+                  {settings.privacyScrub && <Check className="w-3 h-3 stroke-[3]" />}
+                </span>
+              </button>
+            </div>
+          </div>
+
           {/* Inspector Audit Depth Configuration */}
           <div className="rounded-xl border border-white/10 bg-[#18181B] p-4 space-y-3.5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/5 pb-3">

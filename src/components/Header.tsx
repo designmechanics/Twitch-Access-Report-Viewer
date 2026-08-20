@@ -1,10 +1,19 @@
 import React from 'react';
-import { Upload, Sparkles, RefreshCw, PanelLeftClose, PanelLeft, SlidersHorizontal } from 'lucide-react';
+import { Upload, Sparkles, RefreshCw, PanelLeftClose, PanelLeft, SlidersHorizontal, User } from 'lucide-react';
 import { TwitchReportStats } from '../types';
 import { formatBytes } from '../utils/twitchCategories';
 
+export interface UserProfileMeta {
+  username: string;
+  displayName: string;
+  email?: string | null;
+  partnerStatus?: string;
+  profileImageUrl?: string | null;
+}
+
 interface HeaderProps {
   stats: TwitchReportStats | null;
+  userProfile?: UserProfileMeta | null;
   currentFileName: string | null;
   archiveName?: string | null;
   onFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -17,6 +26,7 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({
   stats,
+  userProfile,
   currentFileName,
   archiveName,
   onFileUpload,
@@ -28,9 +38,13 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
+  const getInitials = (name: string) => {
+    return name.slice(0, 2).toUpperCase();
+  };
+
   return (
     <header className="flex h-16 w-full items-center justify-between border-b border-[#9146FF]/25 bg-gradient-to-r from-[#1c0d30] via-[#121118] to-[#200e36] px-5 sticky top-0 z-30 shrink-0 shadow-lg shadow-black/40">
-      {/* Left: Brand & Sidebar Toggle */}
+      {/* Left: Brand, Logo, Avatar & Sidebar Toggle */}
       <div className="flex items-center gap-3">
         {stats && onToggleSidebar && (
           <button
@@ -42,10 +56,46 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
         )}
 
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[#9146FF] to-[#601cc9] shadow-md shadow-[#9146FF]/30">
-          <svg className="h-4.5 w-4.5 text-white fill-current" viewBox="0 0 24 24">
-            <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z"/>
-          </svg>
+        {/* Dual Visual: Official Twitch Platform Logo */}
+        <div className="flex items-center gap-2">
+          <div
+            className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#9146FF] to-[#601cc9] shadow-md shadow-[#9146FF]/30 border border-[#9146FF]/50 shrink-0"
+            title="Official Twitch.tv Platform"
+          >
+            <svg className="h-5 w-5 text-white fill-current drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" viewBox="0 0 24 24">
+              <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z"/>
+            </svg>
+          </div>
+
+          {/* User Headshot / Avatar Graphic if profile loaded */}
+          {userProfile && (
+            <div className="flex items-center gap-2 pl-1 pr-2.5 py-1 rounded-xl bg-white/5 border border-white/10">
+              <div className="relative">
+                {userProfile.profileImageUrl ? (
+                  <img
+                    src={userProfile.profileImageUrl}
+                    alt={userProfile.displayName}
+                    referrerPolicy="no-referrer"
+                    className="w-7 h-7 rounded-lg object-cover border border-[#9146FF]/60 shadow-sm"
+                  />
+                ) : (
+                  <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#9146FF] to-indigo-700 flex items-center justify-center text-white text-[11px] font-bold font-mono border border-[#9146FF]/50 shadow-inner">
+                    {getInitials(userProfile.displayName)}
+                  </div>
+                )}
+                <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 border border-black" />
+              </div>
+
+              <div className="hidden lg:flex flex-col leading-tight">
+                <span className="text-xs font-bold text-white tracking-tight truncate max-w-[120px]">
+                  {userProfile.displayName}
+                </span>
+                <span className="text-[9px] font-mono text-gray-400 uppercase">
+                  {userProfile.partnerStatus || 'Viewer'}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-2">

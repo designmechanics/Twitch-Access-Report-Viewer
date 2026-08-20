@@ -36,6 +36,7 @@ interface ReportViewerProps {
   isOverviewSelected?: boolean;
   onSelectOverview?: () => void;
   chartSettings?: SectionChartSettings;
+  userProfile?: { username: string; displayName: string } | null;
 }
 
 export const ReportViewer: React.FC<ReportViewerProps> = ({
@@ -46,6 +47,7 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
   onSelectFile,
   isOverviewSelected = false,
   onSelectOverview,
+  userProfile,
   chartSettings = {
     chat: '3d',
     watchTime: 'line',
@@ -58,7 +60,8 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
     animateReveal: true,
     colorTheme: 'twitch',
     auditSampleSize: 15,
-    auditShowAll: false
+    auditShowAll: false,
+    privacyScrub: false
   }
 }) => {
   const [viewMode, setViewMode] = useState<ViewMode>('report');
@@ -151,6 +154,7 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
           entries={entries}
           archiveName={archiveName || null}
           onSelectFile={onSelectFile}
+          userProfile={userProfile}
         />
       </section>
     );
@@ -243,6 +247,7 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
             defaultChartStyle={chartSettings.security}
             animateReveal={chartSettings.animateReveal}
             colorTheme={chartSettings.colorTheme}
+            privacyScrub={chartSettings.privacyScrub}
           />
         );
       }
@@ -287,6 +292,7 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
             defaultChartStyle={chartSettings.userDetails}
             animateReveal={chartSettings.animateReveal}
             colorTheme={chartSettings.colorTheme}
+            privacyScrub={chartSettings.privacyScrub}
           />
         );
       }

@@ -1,13 +1,26 @@
-import React from 'react';
-import { Shield, Mail, Phone, Calendar, Key, Award, ExternalLink } from 'lucide-react';
-import { ParsedJsonData } from '../types';
+import React, { useMemo, useEffect, useRef } from 'react';
+import { Shield, Mail, Phone, Calendar, Key, Award, ExternalLink, UserCheck } from 'lucide-react';
+import gsap from 'gsap';
+import { ParsedJsonData, ChartStyle } from '../types';
+import { UnifiedSectionChart } from './charts/UnifiedSectionChart';
+import { ChartDataPoint } from './charts/ThreeDVisualization';
 
 interface UserDetailsReportViewProps {
   data: ParsedJsonData;
   fileName: string;
+  defaultChartStyle?: ChartStyle;
+  animateReveal?: boolean;
+  colorTheme?: 'twitch' | 'cyberpunk' | 'emerald' | 'amber';
 }
 
-export const UserDetailsReportView: React.FC<UserDetailsReportViewProps> = ({ data }) => {
+export const UserDetailsReportView: React.FC<UserDetailsReportViewProps> = ({
+  data,
+  fileName,
+  defaultChartStyle = '3d',
+  animateReveal = true,
+  colorTheme = 'twitch'
+}) => {
+  const containerRef = useRef<HTMLDivElement>(null);
   const user = data.data || {};
 
   const username = user.username || user.display_name || user.login || 'Twitch User';
@@ -20,10 +33,50 @@ export const UserDetailsReportView: React.FC<UserDetailsReportViewProps> = ({ da
   const bio = user.bio || user.description || '';
   const channelUrl = user.channel_url || (username ? `https://twitch.tv/${username}` : '');
 
+  useEffect(() => {
+    if (!animateReveal || !containerRef.current) return;
+    const ctx = gsap.context(() => {
+      gsap.from('.stagger-card', {
+        opacity: 0,
+        y: 16,
+        duration: 0.45,
+        stagger: 0.08,
+        ease: 'power2.out'
+      });
+    }, containerRef);
+
+    return () => ctx.revert();
+  }, [animateReveal, fileName]);
+
+  const profileChartData: ChartDataPoint[] = useMemo(() => {
+    const isEmailVerified = user.email_verified ? 100 : 0;
+    const isPhoneVerified = user.phone_verified ? 100 : 0;
+    const is2faActive = is2FA ? 100 : 0;
+    const isAffiliateOrPartner = partnerStatus.toLowerCase().includes('partner')
+      ? 100
+      : partnerStatus.toLowerCase().includes('affiliate')
+      ? 75
+      : 30;
+
+    let accountAgeYears = 1;
+    if (createdAt) {
+      const ageMs = Date.now() - new Date(createdAt).getTime();
+      accountAgeYears = Math.max(0.5, Math.round((ageMs / (1000 * 60 * 60 * 24 * 365)) * 10) / 10);
+    }
+
+    return [
+      { label: 'Security (2FA)', value: is2faActive, category: is2FA ? '2FA Enabled (100%)' : '2FA Disabled (0%)' },
+      { label: 'Email Verified', value: isEmailVerified, category: isEmailVerified ? 'Verified (100%)' : 'Unverified (0%)' },
+      { label: 'Phone Verified', value: isPhoneVerified, category: isPhoneVerified ? 'Verified (100%)' : 'Unverified (0%)' },
+      { label: 'Account Tier', value: isAffiliateOrPartner, category: `${partnerStatus} status` },
+      { label: 'Account Age (Yrs)', value: Math.min(100, Math.round(accountAgeYears * 15)), secondaryValue: accountAgeYears, category: `${accountAgeYears} Years Active` }
+    ];
+  }, [user, is2FA, partnerStatus, createdAt]);
+
   return (
-    <div className="space-y-4">
+    <div ref={containerRef} className="space-y-4">
       {/* Profile Header Banner */}
-      <div className="rounded-xl border border-white/10 bg-[#18181B] p-5">
+      <div className="stagger-card rounded-xl border border-white/10 bg-[#18181B] p-5">
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
           <div className="w-14 h-14 rounded-lg bg-[#9146FF] flex items-center justify-center text-white text-xl font-bold font-mono shadow-sm shrink-0">
             {displayName.slice(0, 2).toUpperCase()}
@@ -68,8 +121,21 @@ export const UserDetailsReportView: React.FC<UserDetailsReportViewProps> = ({ da
         </div>
       </div>
 
+      {/* 3D / Graphic Visualization */}
+      <div className="stagger-card">
+        <UnifiedSectionChart
+          data={profileChartData}
+          title="Account Verification & Standing Metrics (3D Overview)"
+          yAxisLabel="Score (%)"
+          metricLabel="Score"
+          defaultStyle={defaultChartStyle}
+          height={300}
+          colorTheme={colorTheme}
+        />
+      </div>
+
       {/* Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="stagger-card grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Security & Verification Card */}
         <div className="rounded-xl border border-white/10 bg-[#18181B] p-4">
           <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-3">
