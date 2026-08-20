@@ -194,6 +194,7 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
             fileName={selectedFile.name}
             defaultChartStyle={chartSettings.chat}
             animateReveal={chartSettings.animateReveal}
+            colorTheme={chartSettings.colorTheme}
           />
         );
       }
@@ -204,6 +205,7 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
             fileName={selectedFile.name}
             defaultChartStyle={chartSettings.watchTime}
             animateReveal={chartSettings.animateReveal}
+            colorTheme={chartSettings.colorTheme}
           />
         );
       }
@@ -214,6 +216,7 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
             fileName={selectedFile.name}
             defaultChartStyle={chartSettings.subscriptions}
             animateReveal={chartSettings.animateReveal}
+            colorTheme={chartSettings.colorTheme}
           />
         );
       }
@@ -224,6 +227,7 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
             fileName={selectedFile.name}
             defaultChartStyle={chartSettings.bits}
             animateReveal={chartSettings.animateReveal}
+            colorTheme={chartSettings.colorTheme}
           />
         );
       }
@@ -234,6 +238,7 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
             fileName={selectedFile.name}
             defaultChartStyle={chartSettings.security}
             animateReveal={chartSettings.animateReveal}
+            colorTheme={chartSettings.colorTheme}
           />
         );
       }
@@ -244,6 +249,7 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
             fileName={selectedFile.name}
             defaultChartStyle={chartSettings.channelPoints}
             animateReveal={chartSettings.animateReveal}
+            colorTheme={chartSettings.colorTheme}
           />
         );
       }
@@ -253,6 +259,7 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
           fileName={selectedFile.name}
           defaultChartStyle={chartSettings.generic}
           animateReveal={chartSettings.animateReveal}
+          colorTheme={chartSettings.colorTheme}
         />
       );
     }
@@ -275,6 +282,7 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
             fileName={selectedFile.name}
             defaultChartStyle={chartSettings.userDetails}
             animateReveal={chartSettings.animateReveal}
+            colorTheme={chartSettings.colorTheme}
           />
         );
       }
@@ -378,6 +386,7 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
             fileName={selectedFile.name}
             defaultChartStyle={chartSettings.generic}
             animateReveal={chartSettings.animateReveal}
+            colorTheme={chartSettings.colorTheme}
           />
         ) : (
           <RawTextViewer content={rawText} fileName={selectedFile.name} />

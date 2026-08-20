@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Header } from './components/Header';
 import { ZipDropzone } from './components/ZipDropzone';
 import { FileTreeSidebar } from './components/FileTreeSidebar';
@@ -33,6 +33,11 @@ export default function App() {
     animateReveal: true,
     colorTheme: 'twitch'
   });
+
+  useEffect(() => {
+    const theme = chartSettings.colorTheme || 'twitch';
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [chartSettings.colorTheme]);
 
   const processZip = async (fileOrBlob: File | Blob, name?: string) => {
     try {
@@ -123,7 +128,10 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-screen w-screen flex-col bg-[#0F0E11] font-sans text-gray-200 overflow-hidden select-none">
+    <div
+      data-theme={chartSettings.colorTheme || 'twitch'}
+      className="flex h-screen w-screen flex-col bg-[#0F0E11] font-sans text-gray-200 overflow-hidden select-none"
+    >
       <Header
         stats={stats}
         currentFileName={isOverviewSelected ? 'Archive Summary' : (selectedFile?.name || null)}

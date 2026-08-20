@@ -1,10 +1,163 @@
 @import "tailwindcss";
 
+:root,
+[data-theme="twitch"] {
+  --theme-primary: #9146ff;
+  --theme-primary-hover: #772ce8;
+  --theme-primary-rgb: 145, 70, 255;
+  --theme-secondary: #bf94ff;
+  --theme-glow: rgba(145, 70, 255, 0.35);
+  --theme-bg-dark: #0f0e11;
+  --theme-surface: #18181b;
+  --theme-surface-hover: #27272a;
+  --theme-header-from: #1c0d30;
+  --theme-header-via: #121118;
+  --theme-header-to: #200e36;
+}
+
+[data-theme="cyberpunk"] {
+  --theme-primary: #00f0ff;
+  --theme-primary-hover: #00c8d7;
+  --theme-primary-rgb: 0, 240, 255;
+  --theme-secondary: #ff007f;
+  --theme-glow: rgba(0, 240, 255, 0.35);
+  --theme-bg-dark: #08090d;
+  --theme-surface: #11141e;
+  --theme-surface-hover: #1a2030;
+  --theme-header-from: #081d26;
+  --theme-header-via: #0d1017;
+  --theme-header-to: #1f0a20;
+}
+
+[data-theme="emerald"] {
+  --theme-primary: #10b981;
+  --theme-primary-hover: #059669;
+  --theme-primary-rgb: 16, 185, 129;
+  --theme-secondary: #34d399;
+  --theme-glow: rgba(16, 185, 129, 0.35);
+  --theme-bg-dark: #06120d;
+  --theme-surface: #0e1b15;
+  --theme-surface-hover: #152a20;
+  --theme-header-from: #062016;
+  --theme-header-via: #0a1410;
+  --theme-header-to: #0b291c;
+}
+
+[data-theme="amber"] {
+  --theme-primary: #f59e0b;
+  --theme-primary-hover: #d97706;
+  --theme-primary-rgb: 245, 158, 11;
+  --theme-secondary: #fbbf24;
+  --theme-glow: rgba(245, 158, 11, 0.35);
+  --theme-bg-dark: #120e08;
+  --theme-surface: #1c160f;
+  --theme-surface-hover: #2a2016;
+  --theme-header-from: #261607;
+  --theme-header-via: #14100b;
+  --theme-header-to: #2c1a08;
+}
+
 html, body, #root {
   height: 100%;
   width: 100%;
   margin: 0;
   padding: 0;
   overflow: hidden;
-  background-color: #0F0E11;
+  background-color: var(--theme-bg-dark);
+  color: #e4e4e7;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+/* Global Dynamic CSS Theme Overrides */
+.bg-\[\#9146FF\],
+.bg-\[\#9146ff\] {
+  background-color: var(--theme-primary) !important;
+}
+
+.hover\:bg-\[\#772ce8\]:hover,
+.hover\:bg-\[\#9146FF\]:hover,
+.hover\:bg-\[\#9146ff\]:hover {
+  background-color: var(--theme-primary-hover) !important;
+}
+
+.text-\[\#9146FF\],
+.text-\[\#9146ff\] {
+  color: var(--theme-primary) !important;
+}
+
+.text-\[\#bf94ff\] {
+  color: var(--theme-secondary) !important;
+}
+
+.border-\[\#9146FF\],
+.border-\[\#9146ff\],
+.focus\:border-\[\#9146FF\]:focus,
+.focus\:border-\[\#9146ff\]:focus {
+  border-color: var(--theme-primary) !important;
+}
+
+.bg-\[\#9146FF\]\/20,
+.bg-\[\#9146ff\]\/20,
+.bg-\[\#9146FF\]\/15,
+.bg-\[\#9146ff\]\/15,
+.bg-\[\#9146FF\]\/10,
+.bg-\[\#9146ff\]\/10 {
+  background-color: rgba(var(--theme-primary-rgb), 0.15) !important;
+}
+
+.border-\[\#9146FF\]\/40,
+.border-\[\#9146ff\]\/40,
+.border-\[\#9146FF\]\/30,
+.border-\[\#9146ff\]\/30,
+.border-\[\#9146FF\]\/25,
+.border-\[\#9146ff\]\/25,
+.border-\[\#9146FF\]\/50,
+.border-\[\#9146ff\]\/50 {
+  border-color: rgba(var(--theme-primary-rgb), 0.4) !important;
+}
+
+.shadow-\[\#9146FF\]\/30,
+.shadow-\[\#9146ff\]\/30,
+.shadow-\[\#9146FF\]\/20,
+.shadow-\[\#9146ff\]\/20 {
+  box-shadow: 0 4px 14px var(--theme-glow) !important;
+}
+
+/* Dynamic Header & Card Gradient Overrides */
+.from-\[\#1c0d30\] {
+  --tw-gradient-from: var(--theme-header-from) !important;
+}
+.via-\[\#121118\] {
+  --tw-gradient-stops: var(--theme-header-from), var(--theme-header-via), var(--theme-header-to) !important;
+}
+.to-\[\#200e36\] {
+  --tw-gradient-to: var(--theme-header-to) !important;
+}
+.from-\[\#180e29\] {
+  --tw-gradient-from: var(--theme-header-from) !important;
+}
+.from-\[\#9146FF\] {
+  --tw-gradient-from: var(--theme-primary) !important;
+}
+.to-\[\#601cc9\] {
+  --tw-gradient-to: var(--theme-primary-hover) !important;
+}
+
+/* Custom themed scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(var(--theme-primary-rgb), 0.5);
 }

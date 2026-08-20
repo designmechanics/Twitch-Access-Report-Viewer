@@ -1,27 +1,57 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { MessageSquare, Search, Filter, Sparkles, BarChart2, Calendar, Radio } from 'lucide-react';
+import {
+  MessageSquare,
+  Search,
+  Filter,
+  Sparkles,
+  BarChart2,
+  Calendar,
+  Radio,
+  ExternalLink,
+  X,
+  Clock,
+  Award
+} from 'lucide-react';
 import gsap from 'gsap';
 import { ParsedCsvData, ChartStyle } from '../types';
 import { UnifiedSectionChart } from './charts/UnifiedSectionChart';
 import { ChartDataPoint } from './charts/ThreeDVisualization';
+import {
+  extractStreamerName,
+  formatTwitchDate,
+  getStreamerAvatarColor
+} from '../utils/channelHelpers';
 
 interface ChatReportViewProps {
   data: ParsedCsvData;
   fileName: string;
   defaultChartStyle?: ChartStyle;
   animateReveal?: boolean;
+  colorTheme?: 'twitch' | 'cyberpunk' | 'emerald' | 'amber';
+}
+
+interface ChatRecord {
+  channel: string;
+  channelUrl: string;
+  content: string;
+  date?: string;
+  badges?: string;
+  bitsCheered?: number;
+  rawRow: Record<string, any>;
 }
 
 export const ChatReportView: React.FC<ChatReportViewProps> = ({
   data,
   fileName,
   defaultChartStyle = '3d',
-  animateReveal = true
+  animateReveal = true,
+  colorTheme = 'twitch'
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [channelFilter, setChannelFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [chartDimension, setChartDimension] = useState<'channels' | 'timeline' | 'hourOfDay'>('channels');
+  const [selectedRecord, setSelectedRecord] = useState<ChatRecord | null>(null);
 
   // GSAP Stagger Reveal
   useEffect(() => {
@@ -39,42 +69,58 @@ export const ChatReportView: React.FC<ChatReportViewProps> = ({
     return () => ctx.revert();
   }, [animateReveal, fileName]);
 
-  const channels = useMemo(() => {
-    const set = new Set<string>();
-    for (const r of data.rows) {
-      const ch = r.channel_name || r.channel || r.recipient || r.target_channel;
-      if (ch) set.add(String(ch));
-    }
-    return Array.from(set).sort();
+  // Normalized records
+  const records: ChatRecord[] = useMemo(() => {
+    return data.rows.map((r) => {
+      const channel = extractStreamerName(r, 'Twitch Chat');
+      const content = String(r.message_content || r.body || r.message || r.text || r.content || '').trim();
+      const date = r.timestamp || r.date || r.created_at || r.time || r.sent_at;
+      const badges = r.badges || r.badge_info || undefined;
+      const bits = Number(r.bits_cheered || r.bits || 0);
+
+      return {
+        channel,
+        channelUrl: `https://twitch.tv/${channel.toLowerCase()}`,
+        content,
+        date: date ? String(date) : undefined,
+        badges: badges ? String(badges) : undefined,
+        bitsCheered: isNaN(bits) ? 0 : bits,
+        rawRow: r
+      };
+    });
   }, [data.rows]);
 
-  const filteredRows = useMemo(() => {
-    return data.rows.filter((r) => {
-      const channel = String(r.channel_name || r.channel || r.recipient || r.target_channel || '');
-      const content = String(r.message_content || r.body || r.message || r.text || '');
-      const matchesChannel = channelFilter === 'all' || channel.toLowerCase() === channelFilter.toLowerCase();
+  const channels = useMemo(() => {
+    const set = new Set<string>();
+    for (const r of records) {
+      if (r.channel) set.add(r.channel);
+    }
+    return Array.from(set).sort();
+  }, [records]);
+
+  const filteredRecords = useMemo(() => {
+    return records.filter((r) => {
+      const matchesChannel = channelFilter === 'all' || r.channel.toLowerCase() === channelFilter.toLowerCase();
       const matchesSearch =
         !searchQuery ||
-        content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        channel.toLowerCase().includes(searchQuery.toLowerCase());
+        r.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        r.channel.toLowerCase().includes(searchQuery.toLowerCase());
       return matchesChannel && matchesSearch;
     });
-  }, [data.rows, channelFilter, searchQuery]);
+  }, [records, channelFilter, searchQuery]);
 
   const stats = useMemo(() => {
-    const total = data.rows.length;
+    const total = records.length;
     const channelCounts: Record<string, number> = {};
     const dateCounts: Record<string, number> = {};
     const hourCounts: Record<number, number> = {};
 
-    for (const r of data.rows) {
-      const ch = String(r.channel_name || r.channel || 'unknown');
-      channelCounts[ch] = (channelCounts[ch] || 0) + 1;
+    for (const r of records) {
+      channelCounts[r.channel] = (channelCounts[r.channel] || 0) + 1;
 
-      const rawDate = String(r.timestamp || r.date || r.created_at || '');
-      if (rawDate) {
+      if (r.date) {
         try {
-          const d = new Date(rawDate);
+          const d = new Date(r.date);
           if (!isNaN(d.getTime())) {
             const dateKey = d.toISOString().slice(0, 10);
             dateCounts[dateKey] = (dateCounts[dateKey] || 0) + 1;
@@ -92,11 +138,11 @@ export const ChatReportView: React.FC<ChatReportViewProps> = ({
     const topChannelCount = sortedChannels[0] ? sortedChannels[0][1] : 0;
 
     // Channel chart points
-    const channelChartData: ChartDataPoint[] = sortedChannels.slice(0, 20).map(([channel, count], i) => ({
-      label: channel,
+    const channelChartData: ChartDataPoint[] = sortedChannels.slice(0, 20).map(([ch, count], i) => ({
+      label: ch,
       value: count,
       secondaryValue: i + 1,
-      category: `${count.toLocaleString()} messages in #${channel}`
+      category: `${count.toLocaleString()} messages in #${ch}`
     }));
 
     // Timeline chart points
@@ -105,7 +151,7 @@ export const ChatReportView: React.FC<ChatReportViewProps> = ({
       .map(([date, count]) => ({
         label: date,
         value: count,
-        category: 'Daily Chat Messages',
+        category: `${count} Chat Messages on ${date}`,
         date
       }));
 
@@ -116,7 +162,7 @@ export const ChatReportView: React.FC<ChatReportViewProps> = ({
       return {
         label: ampm,
         value: count,
-        category: `Activity at ${ampm}`
+        category: `${count} Messages at ${ampm}`
       };
     });
 
@@ -130,7 +176,7 @@ export const ChatReportView: React.FC<ChatReportViewProps> = ({
       timelineChartData,
       hourChartData
     };
-  }, [data.rows, channels]);
+  }, [records, channels]);
 
   const activeChartData =
     chartDimension === 'channels'
@@ -141,194 +187,273 @@ export const ChatReportView: React.FC<ChatReportViewProps> = ({
 
   const activeChartTitle =
     chartDimension === 'channels'
-      ? 'Most Chatted Channels (Message Volume vs Channel)'
+      ? 'Top Streamer Channels by Chat Frequency (3D)'
       : chartDimension === 'timeline'
-      ? 'Chat Messages Logged Over Time (Timeline)'
-      : 'Chatting Activity by Hour of Day';
+      ? 'Chat Volume Over Time (Timeline)'
+      : 'Hourly Activity Heatmap (24-Hour Distribution)';
 
   return (
     <div ref={containerRef} className="space-y-4">
-      {/* Metric Cards */}
-      <div className="flex flex-wrap gap-4 stagger-card">
-        <div className="flex-1 min-w-[160px] rounded-xl border border-white/10 bg-[#18181B] p-4">
+      {/* Metric Cards Banner */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 stagger-card">
+        <div className="rounded-xl border border-white/10 bg-[#18181B] p-3.5">
           <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">
-            Total Messages
+            Total Messages Sent
           </p>
-          <p className="text-2xl font-mono font-bold text-white mt-1">
+          <p className="text-xl font-mono font-bold text-white mt-1">
             {stats.total.toLocaleString()}
           </p>
-          <p className="text-[11px] font-mono text-gray-400 mt-0.5">Across all channels</p>
+          <p className="text-[11px] font-mono text-gray-400 mt-0.5">Logged in archive</p>
         </div>
 
-        <div className="flex-1 min-w-[160px] rounded-xl border border-white/10 bg-[#18181B] p-4">
+        <div className="rounded-xl border border-white/10 bg-[#18181B] p-3.5">
           <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">
-            Most Chatted Channel
+            Active Chat Rooms
           </p>
-          <p className="text-2xl font-mono font-bold text-[#9146FF] mt-1 truncate">
+          <p className="text-xl font-mono font-bold text-white mt-1">
+            {stats.uniqueChannels}
+          </p>
+          <p className="text-[11px] font-mono text-gray-400 mt-0.5">Streamer communities</p>
+        </div>
+
+        <div className="rounded-xl border border-white/10 bg-[#18181B] p-3.5">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">
+            Top Streamer Room
+          </p>
+          <p className="text-xl font-mono font-bold text-[#bf94ff] mt-1 truncate" title={stats.topChannel}>
             #{stats.topChannel}
           </p>
           <p className="text-[11px] font-mono text-gray-400 mt-0.5">
-            {stats.topChannelCount.toLocaleString()} messages ({stats.total > 0 ? Math.round((stats.topChannelCount / stats.total) * 100) : 0}%)
+            {stats.topChannelCount.toLocaleString()} messages
           </p>
         </div>
 
-        <div className="flex-1 min-w-[160px] rounded-xl border border-white/10 bg-[#18181B] p-4">
+        <div className="rounded-xl border border-white/10 bg-[#18181B] p-3.5">
           <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">
-            Streamers Chatted In
+            Community Loyalty
           </p>
-          <p className="text-2xl font-mono font-bold text-white mt-1">
-            {stats.uniqueChannels}
+          <p className="text-xl font-mono font-bold text-emerald-400 mt-1">
+            {stats.total > 0
+              ? Math.round((stats.topChannelCount / stats.total) * 100)
+              : 0}
+            %
           </p>
-          <p className="text-[11px] font-mono text-gray-400 mt-0.5">Unique chatrooms</p>
+          <p className="text-[11px] font-mono text-gray-400 mt-0.5">In primary chat</p>
         </div>
       </div>
 
       {/* 3D / Bar / Scatter / Trendline Chart */}
       <div className="stagger-card space-y-2">
-        <div className="flex flex-wrap items-center justify-between gap-2 px-1">
-          <div className="flex items-center gap-1 bg-black/40 p-1 rounded-lg border border-white/10 text-xs font-mono">
-            <button
-              onClick={() => setChartDimension('channels')}
-              className={`cursor-pointer px-3 py-1 rounded transition-colors ${
-                chartDimension === 'channels'
-                  ? 'bg-[#9146FF] text-white font-bold'
-                  : 'text-gray-400 hover:text-white'
-              }`}
-            >
-              Channels (3D Volume)
-            </button>
-            <button
-              onClick={() => setChartDimension('timeline')}
-              className={`cursor-pointer px-3 py-1 rounded transition-colors ${
-                chartDimension === 'timeline'
-                  ? 'bg-[#9146FF] text-white font-bold'
-                  : 'text-gray-400 hover:text-white'
-              }`}
-            >
-              Timeline Over Time
-            </button>
-            <button
-              onClick={() => setChartDimension('hourOfDay')}
-              className={`cursor-pointer px-3 py-1 rounded transition-colors ${
-                chartDimension === 'hourOfDay'
-                  ? 'bg-[#9146FF] text-white font-bold'
-                  : 'text-gray-400 hover:text-white'
-              }`}
-            >
-              Time of Day
-            </button>
-          </div>
+        <div className="flex items-center gap-1 bg-black/40 p-1.5 rounded-lg border border-white/10 text-xs font-mono w-fit">
+          <button
+            onClick={() => setChartDimension('channels')}
+            className={`cursor-pointer px-3 py-1 rounded transition-colors ${
+              chartDimension === 'channels'
+                ? 'bg-[#9146FF] text-white font-bold'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            Channels (3D Chat)
+          </button>
+          <button
+            onClick={() => setChartDimension('timeline')}
+            className={`cursor-pointer px-3 py-1 rounded transition-colors ${
+              chartDimension === 'timeline'
+                ? 'bg-[#9146FF] text-white font-bold'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            Chat Timeline
+          </button>
+          <button
+            onClick={() => setChartDimension('hourOfDay')}
+            className={`cursor-pointer px-3 py-1 rounded transition-colors ${
+              chartDimension === 'hourOfDay'
+                ? 'bg-[#9146FF] text-white font-bold'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            Time of Day (24h)
+          </button>
         </div>
 
         <UnifiedSectionChart
           data={activeChartData}
           title={activeChartTitle}
           yAxisLabel="Messages"
-          metricLabel="Messages Sent"
+          metricLabel="Messages"
           defaultStyle={defaultChartStyle}
-          height={330}
+          height={320}
+          colorTheme={colorTheme}
         />
       </div>
 
-      {/* Filter Toolbar */}
-      <div className="stagger-card flex flex-wrap items-center justify-between gap-3 bg-white/5 border border-white/10 p-2.5 rounded-lg">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="w-3.5 h-3.5 text-gray-500 absolute left-2.5 top-1/2 -translate-y-1/2" />
+      {/* Search & Filter Toolbar */}
+      <div className="stagger-card flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-[#18181B] border border-white/10 rounded-xl p-3">
+        <div className="relative flex-1 max-w-md">
+          <Search className="w-3.5 h-3.5 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Search chat content or channel..."
+            placeholder="Search chat messages or channels..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-[#18181B] border border-white/10 focus:border-[#9146FF] focus:outline-none rounded-md pl-8 pr-3 py-1.5 text-xs text-gray-200 placeholder-gray-500 font-mono"
+            className="w-full bg-[#121214] border border-white/10 rounded-lg pl-9 pr-3 py-1.5 text-xs text-white placeholder-gray-500 focus:border-[#9146FF] focus:outline-none font-mono"
           />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          )}
         </div>
 
-        <div className="flex items-center gap-2">
-          <Filter className="w-3.5 h-3.5 text-gray-500" />
-          <span className="text-xs text-gray-400 font-mono">Channel:</span>
+        <div className="flex items-center gap-2 text-xs font-mono">
+          <span className="text-gray-500">Channel:</span>
           <select
             value={channelFilter}
             onChange={(e) => setChannelFilter(e.target.value)}
-            className="bg-[#18181B] border border-white/10 text-gray-200 text-xs rounded px-2.5 py-1 focus:border-[#9146FF] focus:outline-none cursor-pointer font-mono"
+            className="bg-[#121214] border border-white/10 text-gray-200 rounded px-2.5 py-1 text-xs focus:border-[#9146FF] focus:outline-none cursor-pointer"
           >
             <option value="all">All Channels ({channels.length})</option>
-            {channels.map((ch) => (
+            {channels.slice(0, 30).map((ch) => (
               <option key={ch} value={ch}>
-                {ch}
+                #{ch}
               </option>
             ))}
           </select>
         </div>
       </div>
 
-      {/* Table view matching design layout */}
+      {/* Chat Messages Table */}
       <div className="stagger-card overflow-hidden rounded-xl border border-white/10 bg-[#18181B]">
         <div className="overflow-x-auto max-h-[560px] scrollbar-thin scrollbar-thumb-white/10">
           <table className="w-full border-collapse text-left text-xs">
-            <thead className="sticky top-0 bg-[#252529] shadow-sm z-10">
+            <thead className="sticky top-0 bg-[#252529] shadow-sm z-10 font-mono text-gray-300">
               <tr>
-                <th className="border-b border-white/10 p-3 font-semibold text-gray-300">
-                  Timestamp
-                </th>
-                <th className="border-b border-white/10 p-3 font-semibold text-gray-300">
-                  Channel
-                </th>
-                <th className="border-b border-white/10 p-3 font-semibold text-gray-300">
-                  Message
-                </th>
-                <th className="border-b border-white/10 p-3 font-semibold text-gray-300">
-                  Type / Action
-                </th>
+                <th className="border-b border-white/10 p-3 font-semibold">Streamer Room</th>
+                <th className="border-b border-white/10 p-3 font-semibold">Timestamp</th>
+                <th className="border-b border-white/10 p-3 font-semibold">Message Content</th>
+                <th className="border-b border-white/10 p-3 font-semibold text-right">Inspect</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5 font-mono text-gray-400">
-              {filteredRows.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="p-8 text-center text-gray-500 font-sans">
-                    No chat messages match your query.
-                  </td>
-                </tr>
-              ) : (
-                filteredRows.map((row, idx) => {
-                  const channel = String(row.channel_name || row.channel || row.recipient || 'general');
-                  const timestamp = String(row.timestamp || row.date || row.created_at || '');
-                  const content = String(row.message_content || row.body || row.message || row.text || '');
-                  const isAction = row.is_action === true || String(row.is_action) === 'true';
-                  const isEven = idx % 2 === 1;
+              {filteredRecords.slice(0, 150).map((row, idx) => {
+                const avatarColor = getStreamerAvatarColor(row.channel);
+                const isEven = idx % 2 === 1;
 
-                  return (
-                    <tr
-                      key={idx}
-                      className={`hover:bg-white/5 transition-colors ${
-                        isEven ? 'bg-white/[0.02]' : ''
-                      }`}
-                    >
-                      <td className="p-3 text-gray-400 whitespace-nowrap">
-                        {timestamp ? new Date(timestamp).toISOString().replace('T', ' ').slice(0, 19) : '-'}
-                      </td>
-                      <td className="p-3 text-white font-semibold whitespace-nowrap">
-                        {channel}
-                      </td>
-                      <td className="p-3 text-gray-300 font-sans break-words max-w-lg">
-                        {content}
-                      </td>
-                      <td className="p-3 whitespace-nowrap">
-                        {isAction ? (
-                          <span className="text-[10px] px-2 py-0.5 rounded bg-[#9146FF]/20 text-[#bf94ff] border border-[#9146FF]/30">
-                            ACTION
-                          </span>
-                        ) : (
-                          <span className="text-gray-500 text-[11px]">chat</span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
+                return (
+                  <tr
+                    key={idx}
+                    onClick={() => setSelectedRecord(row)}
+                    className={`hover:bg-white/5 transition-colors cursor-pointer group ${
+                      isEven ? 'bg-white/[0.02]' : ''
+                    }`}
+                  >
+                    <td className="p-3">
+                      <div className="flex items-center gap-2">
+                        <div
+                          className={`w-6 h-6 rounded bg-gradient-to-br ${avatarColor} flex items-center justify-center text-white font-bold text-[10px] shrink-0`}
+                        >
+                          {row.channel.slice(0, 2).toUpperCase()}
+                        </div>
+                        <span className="text-white font-bold font-sans group-hover:text-[#bf94ff] transition-colors">
+                          #{row.channel}
+                        </span>
+                        <a
+                          href={row.channelUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-gray-500 hover:text-white"
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </div>
+                    </td>
+                    <td className="p-3 text-gray-400 whitespace-nowrap">
+                      {formatTwitchDate(row.date)}
+                    </td>
+                    <td className="p-3 text-gray-200 font-sans break-words max-w-lg">
+                      {row.content}
+                    </td>
+                    <td className="p-3 text-right">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedRecord(row);
+                        }}
+                        className="cursor-pointer px-2 py-0.5 rounded bg-white/5 hover:bg-[#9146FF] text-gray-300 hover:text-white text-[11px] font-sans"
+                      >
+                        Inspect
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       </div>
+
+      {/* Inspector Modal */}
+      {selectedRecord && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+          <div className="relative w-full max-w-lg bg-[#18181B] border border-white/15 rounded-2xl shadow-2xl overflow-hidden">
+            <div className="p-4 border-b border-white/10 bg-[#252529] flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div
+                  className={`w-8 h-8 rounded-lg bg-gradient-to-br ${getStreamerAvatarColor(
+                    selectedRecord.channel
+                  )} flex items-center justify-center text-white font-bold text-xs`}
+                >
+                  {selectedRecord.channel.slice(0, 2).toUpperCase()}
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">#{selectedRecord.channel}</h3>
+                  <p className="text-[11px] font-mono text-gray-400">
+                    {formatTwitchDate(selectedRecord.date)}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedRecord(null)}
+                className="cursor-pointer p-1 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-3 font-mono text-xs text-gray-300">
+              <div className="p-3 bg-[#121214] border border-white/5 rounded-xl">
+                <span className="text-[10px] text-gray-500 uppercase font-bold block mb-1">
+                  Full Chat Message
+                </span>
+                <p className="text-sm text-white font-sans leading-relaxed">
+                  "{selectedRecord.content}"
+                </p>
+              </div>
+
+              <div className="space-y-1">
+                <span className="text-[10px] text-gray-500 uppercase font-bold">Raw Log Row</span>
+                <pre className="p-3 bg-[#121214] border border-white/5 rounded-xl text-[11px] overflow-x-auto text-gray-300">
+                  {JSON.stringify(selectedRecord.rawRow, null, 2)}
+                </pre>
+              </div>
+            </div>
+
+            <div className="p-3 border-t border-white/10 bg-[#252529] flex justify-end">
+              <button
+                onClick={() => setSelectedRecord(null)}
+                className="cursor-pointer px-4 py-1.5 rounded-lg bg-[#9146FF] hover:bg-[#772ce8] text-white text-xs font-bold"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

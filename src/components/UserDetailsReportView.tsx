@@ -10,13 +10,15 @@ interface UserDetailsReportViewProps {
   fileName: string;
   defaultChartStyle?: ChartStyle;
   animateReveal?: boolean;
+  colorTheme?: 'twitch' | 'cyberpunk' | 'emerald' | 'amber';
 }
 
 export const UserDetailsReportView: React.FC<UserDetailsReportViewProps> = ({
   data,
   fileName,
   defaultChartStyle = '3d',
-  animateReveal = true
+  animateReveal = true,
+  colorTheme = 'twitch'
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const user = data.data || {};
@@ -128,6 +130,7 @@ export const UserDetailsReportView: React.FC<UserDetailsReportViewProps> = ({
           metricLabel="Score"
           defaultStyle={defaultChartStyle}
           height={300}
+          colorTheme={colorTheme}
         />
       </div>
 
