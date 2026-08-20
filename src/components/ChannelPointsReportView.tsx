@@ -20,6 +20,7 @@ import {
   formatTwitchDate,
   getStreamerAvatarColor
 } from '../utils/channelHelpers';
+import { StreamerAvatar } from './StreamerAvatar';
 
 interface ChannelPointsReportViewProps {
   data: ParsedCsvData;
@@ -342,11 +343,7 @@ export const ChannelPointsReportView: React.FC<ChannelPointsReportViewProps> = (
                   >
                     <td className="p-3">
                       <div className="flex items-center gap-2">
-                        <div
-                          className={`w-6 h-6 rounded bg-gradient-to-br ${avatarColor} flex items-center justify-center text-white font-bold text-[10px] shrink-0`}
-                        >
-                          {row.streamer.slice(0, 2).toUpperCase()}
-                        </div>
+                        <StreamerAvatar channelName={row.streamer} className="w-6 h-6 rounded" />
                         <span className="text-white font-bold font-sans group-hover:text-[#bf94ff] transition-colors">
                           {row.streamer}
                         </span>
@@ -409,13 +406,7 @@ export const ChannelPointsReportView: React.FC<ChannelPointsReportViewProps> = (
           <div className="relative w-full max-w-lg bg-[#18181B] border border-white/15 rounded-2xl shadow-2xl overflow-hidden">
             <div className="p-4 border-b border-white/10 bg-[#252529] flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <div
-                  className={`w-8 h-8 rounded-lg bg-gradient-to-br ${getStreamerAvatarColor(
-                    selectedRecord.streamer
-                  )} flex items-center justify-center text-white font-bold text-xs`}
-                >
-                  {selectedRecord.streamer.slice(0, 2).toUpperCase()}
-                </div>
+                <StreamerAvatar channelName={selectedRecord.streamer} className="w-8 h-8 rounded-lg" />
                 <div>
                   <h3 className="text-sm font-bold text-white">{selectedRecord.streamer}</h3>
                   <p className="text-[11px] font-mono text-gray-400">{selectedRecord.rewardTitle}</p>

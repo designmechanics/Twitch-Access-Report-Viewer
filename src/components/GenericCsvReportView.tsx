@@ -24,6 +24,7 @@ import {
   formatCurrency,
   getStreamerAvatarColor
 } from '../utils/channelHelpers';
+import { StreamerAvatar } from './StreamerAvatar';
 
 interface GenericCsvReportViewProps {
   data: ParsedCsvData;
@@ -273,11 +274,7 @@ export const GenericCsvReportView: React.FC<GenericCsvReportViewProps> = ({
       const avatarColor = getStreamerAvatarColor(cleanName);
       return (
         <div className="flex items-center gap-1.5">
-          <div
-            className={`w-5 h-5 rounded bg-gradient-to-br ${avatarColor} flex items-center justify-center text-white font-bold text-[9px] shrink-0`}
-          >
-            {cleanName.slice(0, 2).toUpperCase()}
-          </div>
+          <StreamerAvatar channelName={cleanName} className="w-5 h-5 rounded" />
           <span className="font-bold text-white font-sans truncate">{cleanName}</span>
           <a
             href={`https://twitch.tv/${cleanName.toLowerCase()}`}

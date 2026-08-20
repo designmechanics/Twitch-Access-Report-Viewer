@@ -2,7 +2,7 @@
 
 ## 1. Avatar & Branding Visual Identity
 - [x] **Dual Identity Header / User Card**: Proper Twitch logo alongside dynamically resolved user avatar / headshot graphics with fallback initial badges and tier badges.
-- [ ] **Streamer Avatar Resolution / Emote Cache**: Automatically resolve Twitch official and third-party emote assets and streamer badges where channel identifiers match.
+- [x] **Streamer Avatar Resolution / Emote Cache**: Automatically resolve Twitch official and third-party emote assets and streamer badges where channel identifiers match.
 
 ## 2. "Twitch Wrapped" Annual / Lifetime Summary Cards
 - [x] **Shareable Bento Graphic**: Downloadable high-res PNG/canvas export displaying top 3 streamers, total hours watched, favourite emotes, and prime viewing hours.
@@ -23,9 +23,9 @@
 - [x] **Channel Point Rewards Log**: Categorised breakdown of custom channel point redemptions.
 
 ## 6. Multi-Year Account Evolution & Timeline
-- [ ] **Viewing Drift Over Time**: Interactive timeline showing how primary streamers or categories shifted year-over-year.
+- [x] **Viewing Drift Over Time**: Interactive timeline showing how primary streamers or categories shifted year-over-year.
 - [ ] **Platform Shift Tracker**: Breakdown of desktop browser vs. mobile vs. smart TV/console viewing habits.
 
 ## 7. Export & Portability Tools
-- [ ] **Clean CSV / JSON Re-Export**: Export enriched datasets (e.g. reconstructed session durations, filtered chat records).
+- [x] **Clean CSV / JSON Re-Export**: Export enriched datasets (e.g. reconstructed session durations, filtered chat records).
 - [x] **Privacy Scrub Mode**: One-click toggle in the header/settings to obscure IP addresses, login geo-coordinates, real name, and email address for safe sharing/streaming.

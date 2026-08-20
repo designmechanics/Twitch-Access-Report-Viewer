@@ -23,6 +23,7 @@ import {
   formatTwitchDate,
   getStreamerAvatarColor
 } from '../utils/channelHelpers';
+import { StreamerAvatar } from './StreamerAvatar';
 
 interface ChatReportViewProps {
   data: ParsedCsvData;
@@ -398,11 +399,7 @@ export const ChatReportView: React.FC<ChatReportViewProps> = ({
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <span className="text-xs font-mono text-gray-500 w-5">{idx + 1}</span>
-                    <div
-                      className={`w-6 h-6 rounded bg-gradient-to-br ${avatarColor} flex items-center justify-center text-white font-bold text-[10px] shrink-0`}
-                    >
-                      {ch.slice(0, 2).toUpperCase()}
-                    </div>
+                    <StreamerAvatar channelName={ch} className="w-6 h-6 rounded" />
                     <div className="min-w-0">
                       <span className="text-xs font-bold text-white truncate font-sans group-hover:text-[#bf94ff] transition-colors block">
                         #{ch}
@@ -485,11 +482,7 @@ export const ChatReportView: React.FC<ChatReportViewProps> = ({
                   >
                     <td className="p-3">
                       <div className="flex items-center gap-2">
-                        <div
-                          className={`w-6 h-6 rounded bg-gradient-to-br ${avatarColor} flex items-center justify-center text-white font-bold text-[10px] shrink-0`}
-                        >
-                          {row.channel.slice(0, 2).toUpperCase()}
-                        </div>
+                        <StreamerAvatar channelName={row.channel} className="w-6 h-6 rounded" />
                         <span className="text-white font-bold font-sans group-hover:text-[#bf94ff] transition-colors">
                           #{row.channel}
                         </span>
@@ -535,13 +528,7 @@ export const ChatReportView: React.FC<ChatReportViewProps> = ({
           <div className="relative w-full max-w-lg bg-[#18181B] border border-white/15 rounded-2xl shadow-2xl overflow-hidden">
             <div className="p-4 border-b border-white/10 bg-[#252529] flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <div
-                  className={`w-8 h-8 rounded-lg bg-gradient-to-br ${getStreamerAvatarColor(
-                    selectedRecord.channel
-                  )} flex items-center justify-center text-white font-bold text-xs`}
-                >
-                  {selectedRecord.channel.slice(0, 2).toUpperCase()}
-                </div>
+                <StreamerAvatar channelName={selectedRecord.channel} className="w-8 h-8 rounded-lg" />
                 <div>
                   <h3 className="text-sm font-bold text-white">#{selectedRecord.channel}</h3>
                   <p className="text-[11px] font-mono text-gray-400">

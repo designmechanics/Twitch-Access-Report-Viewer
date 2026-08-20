@@ -36,6 +36,7 @@ interface ReportViewerProps {
   isOverviewSelected?: boolean;
   onSelectOverview?: () => void;
   chartSettings?: SectionChartSettings;
+  onUpdateSettings?: (settings: SectionChartSettings) => void;
   userProfile?: { username: string; displayName: string } | null;
 }
 
@@ -62,7 +63,8 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
     auditSampleSize: 15,
     auditShowAll: false,
     privacyScrub: false
-  }
+  },
+  onUpdateSettings
 }) => {
   const [viewMode, setViewMode] = useState<ViewMode>('report');
   const [rawText, setRawText] = useState<string>('');
@@ -155,6 +157,12 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({
           archiveName={archiveName || null}
           onSelectFile={onSelectFile}
           userProfile={userProfile}
+          privacyScrub={chartSettings.privacyScrub}
+          onTogglePrivacyScrub={() => {
+            if (onUpdateSettings) {
+              onUpdateSettings({ ...chartSettings, privacyScrub: !chartSettings.privacyScrub });
+            }
+          }}
         />
       </section>
     );

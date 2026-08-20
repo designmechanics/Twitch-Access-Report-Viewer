@@ -30,6 +30,7 @@ import {
   formatTwitchDate,
   getStreamerAvatarColor
 } from '../utils/channelHelpers';
+import { StreamerAvatar } from './StreamerAvatar';
 import {
   inferPlaybackSessionsAndDurations,
   InferredPlaybackRecord,
@@ -515,11 +516,7 @@ export const WatchTimeReportView: React.FC<WatchTimeReportViewProps> = ({
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <span className="text-xs font-mono text-gray-500 w-5">{idx + 1}</span>
-                    <div
-                      className={`w-6 h-6 rounded-md bg-gradient-to-br ${avatarColor} flex items-center justify-center text-white font-bold text-[10px] shrink-0`}
-                    >
-                      {ch.name.slice(0, 2).toUpperCase()}
-                    </div>
+                    <StreamerAvatar channelName={ch.name} className="w-6 h-6 rounded-md" />
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5">
                         <span className="text-xs font-bold text-white truncate font-sans group-hover:text-[#bf94ff] transition-colors">
@@ -647,11 +644,7 @@ export const WatchTimeReportView: React.FC<WatchTimeReportViewProps> = ({
                     <td className="p-3 text-center text-gray-500">{r.index}</td>
                     <td className="p-3">
                       <div className="flex items-center gap-2">
-                        <div
-                          className={`w-6 h-6 rounded bg-gradient-to-br ${avatarColor} flex items-center justify-center text-white font-bold text-[10px] shrink-0`}
-                        >
-                          {r.streamer.slice(0, 2).toUpperCase()}
-                        </div>
+                        <StreamerAvatar channelName={r.streamer} className="w-6 h-6 rounded" />
                         <span className="font-bold text-white font-sans group-hover:text-[#bf94ff] transition-colors">
                           {r.streamer}
                         </span>
@@ -827,13 +820,7 @@ export const WatchTimeReportView: React.FC<WatchTimeReportViewProps> = ({
           <div className="relative w-full max-w-lg bg-[#18181B] border border-white/15 rounded-2xl shadow-2xl overflow-hidden">
             <div className="p-4 border-b border-white/10 bg-[#252529] flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <div
-                  className={`w-8 h-8 rounded-lg bg-gradient-to-br ${getStreamerAvatarColor(
-                    selectedRecord.streamer
-                  )} flex items-center justify-center text-white font-bold text-xs`}
-                >
-                  {selectedRecord.streamer.slice(0, 2).toUpperCase()}
-                </div>
+                <StreamerAvatar channelName={selectedRecord.streamer} className="w-8 h-8 rounded-lg" />
                 <div>
                   <h3 className="text-sm font-bold text-white">{selectedRecord.streamer}</h3>
                   <p className="text-[11px] font-mono text-gray-400">{selectedRecord.category}</p>

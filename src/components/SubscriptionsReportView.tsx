@@ -29,6 +29,7 @@ import {
   formatCurrency,
   getStreamerAvatarColor
 } from '../utils/channelHelpers';
+import { StreamerAvatar } from './StreamerAvatar';
 
 interface SubscriptionsReportViewProps {
   data: ParsedCsvData;
@@ -501,11 +502,7 @@ export const SubscriptionsReportView: React.FC<SubscriptionsReportViewProps> = (
                       {/* Streamer Channel with Avatar & Link */}
                       <td className="p-3">
                         <div className="flex items-center gap-2.5">
-                          <div
-                            className={`w-7 h-7 rounded-md bg-gradient-to-br ${avatarColor} flex items-center justify-center text-white font-bold font-sans text-xs shrink-0 shadow-sm`}
-                          >
-                            {sub.channel.slice(0, 2).toUpperCase()}
-                          </div>
+                          <StreamerAvatar channelName={sub.channel} className="w-7 h-7 rounded-md" />
                           <div>
                             <div className="flex items-center gap-1.5">
                               <span className="font-bold text-white font-sans group-hover:text-[#bf94ff] transition-colors">
@@ -651,13 +648,7 @@ export const SubscriptionsReportView: React.FC<SubscriptionsReportViewProps> = (
             {/* Header Banner */}
             <div className="p-5 border-b border-white/10 bg-[#252529] flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div
-                  className={`w-10 h-10 rounded-xl bg-gradient-to-br ${getStreamerAvatarColor(
-                    selectedSub.channel
-                  )} flex items-center justify-center text-white font-bold text-lg shadow-md`}
-                >
-                  {selectedSub.channel.slice(0, 2).toUpperCase()}
-                </div>
+                <StreamerAvatar channelName={selectedSub.channel} className="w-10 h-10 rounded-xl" />
                 <div>
                   <h3 className="text-base font-bold text-white flex items-center gap-2">
                     <span>{selectedSub.channel}</span>

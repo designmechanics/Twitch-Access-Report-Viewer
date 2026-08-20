@@ -21,6 +21,8 @@ import { TwitchWrappedBento } from './TwitchWrappedBento';
 import { WalletLedgerBento } from './WalletLedgerBento';
 import { ModerationBento } from './ModerationBento';
 import { ChannelPointsBento } from './ChannelPointsBento';
+import { ViewingDriftBento } from './ViewingDriftBento';
+import { ExportToolsBento } from './ExportToolsBento';
 
 interface ArchiveOverviewViewProps {
   stats: TwitchReportStats;
@@ -28,6 +30,8 @@ interface ArchiveOverviewViewProps {
   archiveName: string | null;
   onSelectFile: (file: ZipFileEntry) => void;
   userProfile?: { username: string; displayName: string } | null;
+  privacyScrub?: boolean;
+  onTogglePrivacyScrub?: () => void;
 }
 
 export const ArchiveOverviewView: React.FC<ArchiveOverviewViewProps> = ({
@@ -35,7 +39,9 @@ export const ArchiveOverviewView: React.FC<ArchiveOverviewViewProps> = ({
   entries,
   archiveName,
   onSelectFile,
-  userProfile
+  userProfile,
+  privacyScrub = false,
+  onTogglePrivacyScrub = () => {}
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'populated' | 'empty'>('populated');
@@ -112,9 +118,18 @@ export const ArchiveOverviewView: React.FC<ArchiveOverviewViewProps> = ({
       {userProfile && (
         <>
           <TwitchWrappedBento entries={entries} username={userProfile.username} />
+          <ViewingDriftBento entries={entries} />
           <WalletLedgerBento entries={entries} username={userProfile.username} />
           <ModerationBento entries={entries} />
           <ChannelPointsBento entries={entries} />
+          
+          <ExportToolsBento 
+            entries={entries} 
+            stats={stats} 
+            username={userProfile.username} 
+            privacyScrub={privacyScrub}
+            onTogglePrivacyScrub={onTogglePrivacyScrub}
+          />
         </>
       )}
 

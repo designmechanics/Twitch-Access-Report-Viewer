@@ -206,6 +206,7 @@ export default function App() {
               isOverviewSelected={isOverviewSelected}
               onSelectOverview={handleSelectOverview}
               chartSettings={chartSettings}
+              onUpdateSettings={setChartSettings}
               userProfile={userProfile}
             />
           </>

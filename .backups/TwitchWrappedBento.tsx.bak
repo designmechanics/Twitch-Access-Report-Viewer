@@ -2,7 +2,6 @@ import React, { useMemo, useRef } from 'react';
 import { ZipFileEntry } from '../types';
 import { Share2, Download, Trophy, Clock, MessageSquare, Zap, Target, Sparkles } from 'lucide-react';
 import * as htmlToImage from 'html-to-image';
-import { StreamerAvatar } from './StreamerAvatar';
 
 interface TwitchWrappedBentoProps {
   entries: ZipFileEntry[];
@@ -193,15 +192,12 @@ export const TwitchWrappedBento: React.FC<TwitchWrappedBentoProps> = ({ entries,
             <div className="flex-1 flex flex-col justify-center gap-4">
               {metrics.topStreamers.map((streamer, idx) => (
                 <div key={streamer.name} className="flex items-center gap-3">
-                  <div className="relative shrink-0">
-                    <StreamerAvatar channelName={streamer.name} className="w-10 h-10 rounded-lg shadow-md" />
-                    <div className="absolute -top-2 -left-2 w-5 h-5 rounded-md bg-[#9146FF] text-white flex items-center justify-center font-bold text-[10px] border border-[#18181B] shadow-sm z-10">
-                      #{idx + 1}
-                    </div>
+                  <div className="w-8 h-8 rounded bg-[#9146FF]/20 text-[#bf94ff] flex items-center justify-center font-bold text-sm border border-[#9146FF]/30">
+                    #{idx + 1}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-white font-bold truncate text-sm">{streamer.name}</div>
-                    <div className="text-[10px] text-gray-400 font-mono">{streamer.hours} hrs watched</div>
+                    <div className="text-white font-bold truncate">{streamer.name}</div>
+                    <div className="text-[10px] text-gray-500 font-mono">{streamer.hours} hrs</div>
                   </div>
                 </div>
               ))}
