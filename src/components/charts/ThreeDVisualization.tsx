@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
+import { StreamerAvatar } from '../StreamerAvatar';
 
 export interface ChartDataPoint {
   label: string;
@@ -305,19 +306,22 @@ export const ThreeDVisualization: React.FC<ThreeDVisualizationProps> = ({
       {/* Floating Hover Tooltip */}
       {hoveredPoint && (
         <div
-          className="absolute z-20 pointer-events-none rounded-lg border border-[#9146FF]/50 bg-black/90 p-2.5 shadow-xl text-xs font-mono backdrop-blur-sm transform -translate-x-1/2 -translate-y-full mb-3 transition-all"
+          className="absolute z-20 pointer-events-none rounded-lg border border-[#9146FF]/50 bg-black/95 p-3 shadow-2xl text-xs font-mono backdrop-blur-md transform -translate-x-1/2 -translate-y-full mb-3 transition-all min-w-[140px]"
           style={{
             left: `${Math.max(80, Math.min(mousePos.x, (mountRef.current?.clientWidth || 500) - 80))}px`,
             top: `${Math.max(40, mousePos.y - 10)}px`
           }}
         >
-          <p className="font-bold text-white text-[13px]">{hoveredPoint.label}</p>
-          <div className="flex items-center gap-2 mt-1 text-[#bf94ff]">
+          <div className="flex items-center gap-2 mb-1.5 pb-1 border-b border-white/10">
+            <StreamerAvatar channelName={hoveredPoint.label} className="w-5 h-5 rounded shadow-sm" />
+            <p className="font-bold text-white text-[13px] truncate">{hoveredPoint.label}</p>
+          </div>
+          <div className="flex items-center justify-between gap-2 text-[#bf94ff]">
             <span className="text-gray-400">{yAxisLabel}:</span>
-            <span className="font-bold text-white">{hoveredPoint.value.toLocaleString()}</span>
+            <span className="font-bold text-white font-mono">{hoveredPoint.value.toLocaleString()}</span>
           </div>
           {hoveredPoint.category && (
-            <p className="text-[10px] text-gray-400 mt-0.5">{hoveredPoint.category}</p>
+            <p className="text-[10px] text-gray-400 mt-1">{hoveredPoint.category}</p>
           )}
         </div>
       )}

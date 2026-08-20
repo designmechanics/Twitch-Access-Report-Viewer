@@ -308,8 +308,11 @@ export const SubscriptionsReportView: React.FC<SubscriptionsReportViewProps> = (
           <p className="text-xl font-mono font-bold text-cyan-400 mt-1 truncate">
             {analytics.maxTenure} <span className="text-xs text-gray-500 font-sans">mo</span>
           </p>
-          <p className="text-[11px] font-mono text-gray-400 mt-0.5 truncate" title={analytics.longestChannel}>
-            {analytics.longestChannel}
+          <p className="text-[11px] font-mono text-gray-400 mt-0.5 truncate flex items-center gap-1.5" title={analytics.longestChannel}>
+            {analytics.longestChannel && (
+              <StreamerAvatar channelName={analytics.longestChannel} className="w-4 h-4 rounded-md inline-block shrink-0" />
+            )}
+            <span className="truncate">{analytics.longestChannel || 'N/A'}</span>
           </p>
         </div>
 

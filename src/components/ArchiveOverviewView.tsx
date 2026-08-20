@@ -87,8 +87,8 @@ export const ArchiveOverviewView: React.FC<ArchiveOverviewViewProps> = ({
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-8">
       {/* Overview Title Banner */}
-      <div className="rounded-xl border border-white/10 bg-[#18181B] p-6">
-        <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="rounded-xl border border-purple-500/30 plasma-vibrant-header p-6 shadow-xl relative overflow-hidden">
+        <div className="flex flex-wrap items-center justify-between gap-4 relative z-10">
           <div>
             <div className="flex items-center gap-2 text-xs font-mono text-gray-400 uppercase tracking-widest mb-1">
               <Database className="w-3.5 h-3.5 text-[#9146FF]" />

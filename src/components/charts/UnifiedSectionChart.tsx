@@ -13,9 +13,10 @@ import {
   ZAxis,
   CartesianGrid
 } from 'recharts';
-import { Box, BarChart3, Dot, TrendingUp, SlidersHorizontal, Sparkles } from 'lucide-react';
+import { Box, BarChart3, Dot, TrendingUp, SlidersHorizontal, Sparkles, User } from 'lucide-react';
 import { ChartStyle } from '../../types';
 import { ThreeDVisualization, ChartDataPoint } from './ThreeDVisualization';
+import { StreamerAvatar } from '../StreamerAvatar';
 
 interface UnifiedSectionChartProps {
   data: ChartDataPoint[];
@@ -89,18 +90,25 @@ export const UnifiedSectionChart: React.FC<UnifiedSectionChartProps> = ({
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       const point = payload[0].payload;
+      const targetName = point.streamer || point.channel || point.label || label;
       return (
-        <div className="rounded-lg border border-white/15 bg-black/90 p-3 shadow-xl backdrop-blur-md text-xs font-mono">
-          <p className="font-bold text-white mb-1">{point.label || label}</p>
-          <div className="flex items-center gap-2 text-[#bf94ff]">
-            <span className="text-gray-400">{metricLabel || yAxisLabel}:</span>
-            <span className="font-bold text-white">{Number(payload[0].value).toLocaleString()}</span>
+        <div className="rounded-lg border border-white/15 bg-black/95 p-3 shadow-2xl backdrop-blur-md text-xs font-mono min-w-[140px]">
+          <div className="flex items-center gap-2 mb-2 pb-1.5 border-b border-white/10">
+            <StreamerAvatar channelName={targetName} className="w-6 h-6 rounded-md shadow-sm" />
+            <span className="font-bold text-white text-sm truncate">{targetName}</span>
+          </div>
+          <div className="flex items-center justify-between gap-3 text-[#bf94ff]">
+            <span className="text-gray-400 text-[11px]">{metricLabel || yAxisLabel}:</span>
+            <span className="font-bold text-white font-mono">{Number(payload[0].value).toLocaleString()}</span>
           </div>
           {point.category && (
-            <p className="text-[10px] text-gray-400 mt-1">Category: {point.category}</p>
+            <div className="flex items-center justify-between gap-2 text-[10px] text-gray-400 mt-1">
+              <span>Category:</span>
+              <span className="text-gray-300 truncate max-w-[100px]">{point.category}</span>
+            </div>
           )}
           {point.date && (
-            <p className="text-[10px] text-gray-500 mt-0.5">{point.date}</p>
+            <p className="text-[10px] text-gray-500 mt-1 pt-1 border-t border-white/5">{point.date}</p>
           )}
         </div>
       );
@@ -305,6 +313,36 @@ export const UnifiedSectionChart: React.FC<UnifiedSectionChartProps> = ({
           </div>
         )}
       </div>
+
+      {/* Streamer Avatar Descriptors Strip */}
+      {showCategoryLegend && data && data.length > 0 && (
+        <div className="pt-3 border-t border-white/10 flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1.5 text-[10px] font-mono text-gray-400 uppercase tracking-wider mr-1">
+            <User className="w-3 h-3 text-[#9146FF]" />
+            <span>Mapped Channels & Streamers:</span>
+          </div>
+          {data.slice(0, 10).map((pt, i) => {
+            const streamerName = pt.streamer || pt.channel || pt.label;
+            return (
+              <div
+                key={i}
+                className="flex items-center gap-1.5 bg-white/5 hover:bg-white/10 px-2 py-1 rounded-full border border-white/10 text-[11px] text-gray-200 transition-colors shadow-sm"
+              >
+                <StreamerAvatar channelName={streamerName} className="w-4 h-4 rounded-full" />
+                <span className="font-bold truncate max-w-[100px]">{streamerName}</span>
+                <span className="text-[10px] font-mono text-[#bf94ff] pl-0.5">
+                  ({typeof pt.value === 'number' ? pt.value.toLocaleString() : pt.value})
+                </span>
+              </div>
+            );
+          })}
+          {data.length > 10 && (
+            <span className="text-[10px] font-mono text-gray-500 pl-1">
+              +{data.length - 10} more
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 };

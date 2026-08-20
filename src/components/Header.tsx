@@ -43,9 +43,11 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   return (
-    <header className="flex h-16 w-full items-center justify-between border-b border-[#9146FF]/25 bg-gradient-to-r from-[#1c0d30] via-[#121118] to-[#200e36] px-5 sticky top-0 z-30 shrink-0 shadow-lg shadow-black/40">
-      {/* Left: Brand, Logo, Avatar & Sidebar Toggle */}
-      <div className="flex items-center gap-3">
+    <header className="flex h-16 w-full items-center justify-between border-b border-[#9146FF]/30 plasma-vibrant-header px-5 sticky top-0 z-30 shrink-0 shadow-xl shadow-black/60">
+      {/* Content wrapper with relative z-10 for plasma overlay layering */}
+      <div className="flex items-center justify-between w-full relative z-10">
+        {/* Left: Brand, Logo, Avatar & Sidebar Toggle */}
+        <div className="flex items-center gap-3">
         {stats && onToggleSidebar && (
           <button
             onClick={onToggleSidebar}
@@ -165,6 +167,7 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
         )}
       </div>
-    </header>
-  );
+    </div>
+  </header>
+);
 };
