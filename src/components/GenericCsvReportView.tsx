@@ -1,25 +1,166 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   Search,
   ChevronDown,
   ChevronUp,
   ChevronsUpDown,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  BarChart3,
+  Layers,
+  Sparkles,
+  Sliders
 } from 'lucide-react';
-import { ParsedCsvData } from '../types';
+import gsap from 'gsap';
+import { ParsedCsvData, ChartStyle } from '../types';
+import { UnifiedSectionChart } from './charts/UnifiedSectionChart';
+import { ChartDataPoint } from './charts/ThreeDVisualization';
 
 interface GenericCsvReportViewProps {
   data: ParsedCsvData;
   fileName: string;
+  defaultChartStyle?: ChartStyle;
+  animateReveal?: boolean;
 }
 
-export const GenericCsvReportView: React.FC<GenericCsvReportViewProps> = ({ data, fileName }) => {
+export const GenericCsvReportView: React.FC<GenericCsvReportViewProps> = ({
+  data,
+  fileName,
+  defaultChartStyle = 'bar',
+  animateReveal = true
+}) => {
+  const containerRef = useRef<HTMLDivElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortField, setSortField] = useState<string | null>(null);
   const [sortAsc, setSortAsc] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
+
+  // Dynamic Chart Controls
+  const [showChart, setShowChart] = useState(true);
+  const [selectedLabelCol, setSelectedLabelCol] = useState<string>('');
+  const [selectedValueCol, setSelectedValueCol] = useState<string>('count');
+
+  // GSAP animation
+  useEffect(() => {
+    if (!animateReveal || !containerRef.current) return;
+    const ctx = gsap.context(() => {
+      gsap.from('.stagger-card', {
+        opacity: 0,
+        y: 16,
+        duration: 0.45,
+        stagger: 0.08,
+        ease: 'power2.out'
+      });
+    }, containerRef);
+
+    return () => ctx.revert();
+  }, [animateReveal, fileName]);
+
+  // Identify numeric & categorical columns
+  const columnAnalysis = useMemo(() => {
+    const numericCols: string[] = [];
+    const categoricalCols: string[] = [];
+    const dateCols: string[] = [];
+
+    for (const h of data.headers) {
+      let isNumeric = true;
+      let hasNumbers = false;
+      let isDate = true;
+      let sampleCount = 0;
+
+      for (const row of data.rows.slice(0, 50)) {
+        const val = row[h];
+        if (val !== null && val !== undefined && String(val).trim() !== '') {
+          sampleCount++;
+          if (typeof val === 'number' || (!isNaN(Number(val)) && !isNaN(parseFloat(String(val))))) {
+            hasNumbers = true;
+          } else {
+            isNumeric = false;
+          }
+
+          if (isDate) {
+            const parsed = Date.parse(String(val));
+            if (isNaN(parsed) || !String(val).match(/[-/T:]/)) {
+              isDate = false;
+            }
+          }
+        }
+      }
+
+      if (hasNumbers && isNumeric) {
+        numericCols.push(h);
+      } else if (isDate && sampleCount > 0) {
+        dateCols.push(h);
+      } else {
+        categoricalCols.push(h);
+      }
+    }
+
+    return { numericCols, categoricalCols, dateCols };
+  }, [data.headers, data.rows]);
+
+  // Set default columns on data change
+  useEffect(() => {
+    if (data.headers.length > 0) {
+      const bestLabelCol =
+        columnAnalysis.dateCols[0] ||
+        columnAnalysis.categoricalCols.find((c) =>
+          ['channel', 'channel_name', 'username', 'category', 'type', 'name', 'title'].some((kw) =>
+            c.toLowerCase().includes(kw)
+          )
+        ) ||
+        columnAnalysis.categoricalCols[0] ||
+        data.headers[0];
+      setSelectedLabelCol(bestLabelCol);
+
+      const bestValueCol =
+        columnAnalysis.numericCols.find((c) =>
+          ['minutes', 'amount', 'bits', 'count', 'points', 'total', 'tenure'].some((kw) =>
+            c.toLowerCase().includes(kw)
+          )
+        ) ||
+        columnAnalysis.numericCols[0] ||
+        'count';
+      setSelectedValueCol(bestValueCol);
+    }
+  }, [data.headers, columnAnalysis]);
+
+  // Dynamic Chart Points Generation
+  const dynamicChartData = useMemo(() => {
+    if (!selectedLabelCol) return [];
+
+    const aggregation: Record<string, { total: number; count: number }> = {};
+
+    for (const row of data.rows) {
+      const rawKey = row[selectedLabelCol];
+      const key = rawKey ? String(rawKey).trim() : 'Unknown';
+
+      let numVal = 1;
+      if (selectedValueCol !== 'count') {
+        const val = Number(row[selectedValueCol]);
+        numVal = isNaN(val) ? 0 : val;
+      }
+
+      if (!aggregation[key]) {
+        aggregation[key] = { total: 0, count: 0 };
+      }
+      aggregation[key].total += numVal;
+      aggregation[key].count += 1;
+    }
+
+    const points: ChartDataPoint[] = Object.entries(aggregation)
+      .sort((a, b) => b[1].total - a[1].total)
+      .slice(0, 25)
+      .map(([label, info], i) => ({
+        label,
+        value: Math.round(info.total * 100) / 100,
+        secondaryValue: i + 1,
+        category: `${label}: ${info.total.toLocaleString()} (${info.count} rows)`
+      }));
+
+    return points;
+  }, [data.rows, selectedLabelCol, selectedValueCol]);
 
   const filteredRows = useMemo(() => {
     if (!searchQuery) return data.rows;
@@ -73,9 +214,9 @@ export const GenericCsvReportView: React.FC<GenericCsvReportViewProps> = ({ data
   };
 
   return (
-    <div className="space-y-4 flex flex-col">
+    <div ref={containerRef} className="space-y-4 flex flex-col">
       {/* Metric Highlights Row */}
-      <div className="flex flex-wrap gap-4">
+      <div className="flex flex-wrap gap-4 stagger-card">
         <div className="flex-1 min-w-[160px] rounded-xl border border-white/10 bg-[#18181B] p-4">
           <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">
             Total Records
@@ -83,6 +224,7 @@ export const GenericCsvReportView: React.FC<GenericCsvReportViewProps> = ({ data
           <p className="text-2xl font-mono font-bold text-white mt-1">
             {data.rowCount.toLocaleString()}
           </p>
+          <p className="text-[11px] font-mono text-gray-400 mt-0.5">Rows in dataset</p>
         </div>
 
         <div className="flex-1 min-w-[160px] rounded-xl border border-white/10 bg-[#18181B] p-4">
@@ -91,6 +233,9 @@ export const GenericCsvReportView: React.FC<GenericCsvReportViewProps> = ({ data
           </p>
           <p className="text-2xl font-mono font-bold text-[#9146FF] mt-1">
             {data.columnCount}
+          </p>
+          <p className="text-[11px] font-mono text-gray-400 mt-0.5">
+            {columnAnalysis.numericCols.length} numeric, {columnAnalysis.categoricalCols.length} text
           </p>
         </div>
 
@@ -114,14 +259,76 @@ export const GenericCsvReportView: React.FC<GenericCsvReportViewProps> = ({ data
                     .slice(0, 2)
                     .map(([k, v]) => `${k}: ${v.toLocaleString()}`)
                     .join(' | ')
-                : 'No numeric columns'}
+                : 'Dataset mapped'}
             </p>
           </div>
         )}
       </div>
 
+      {/* Dynamic 3D / Bar Correlation Graph */}
+      {showChart && dynamicChartData.length > 0 && (
+        <div className="stagger-card space-y-2">
+          {/* Correlation Dimension Pickers */}
+          <div className="flex flex-wrap items-center justify-between gap-3 bg-white/5 border border-white/10 p-2.5 rounded-lg text-xs font-mono">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-gray-400 flex items-center gap-1">
+                <Sliders className="w-3.5 h-3.5 text-[#9146FF]" />
+                <span>Correlate:</span>
+              </span>
+
+              <div className="flex items-center gap-1.5">
+                <span className="text-gray-500">Group By (X):</span>
+                <select
+                  value={selectedLabelCol}
+                  onChange={(e) => setSelectedLabelCol(e.target.value)}
+                  className="bg-[#18181B] border border-white/10 text-gray-200 text-xs rounded px-2.5 py-1 focus:border-[#9146FF] focus:outline-none cursor-pointer"
+                >
+                  {data.headers.map((h) => (
+                    <option key={h} value={h}>
+                      {h}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <span className="text-gray-500">Metric (Y):</span>
+                <select
+                  value={selectedValueCol}
+                  onChange={(e) => setSelectedValueCol(e.target.value)}
+                  className="bg-[#18181B] border border-white/10 text-gray-200 text-xs rounded px-2.5 py-1 focus:border-[#9146FF] focus:outline-none cursor-pointer"
+                >
+                  <option value="count">Count (Frequency)</option>
+                  {columnAnalysis.numericCols.map((numH) => (
+                    <option key={numH} value={numH}>
+                      Sum of {numH}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowChart(false)}
+              className="cursor-pointer text-xs text-gray-500 hover:text-gray-300"
+            >
+              Hide Chart
+            </button>
+          </div>
+
+          <UnifiedSectionChart
+            data={dynamicChartData}
+            title={`${selectedValueCol === 'count' ? 'Record Distribution' : 'Sum of ' + selectedValueCol} by ${selectedLabelCol}`}
+            yAxisLabel={selectedValueCol === 'count' ? 'Records' : selectedValueCol}
+            metricLabel={selectedValueCol === 'count' ? 'Count' : selectedValueCol}
+            defaultStyle={defaultChartStyle}
+            height={320}
+          />
+        </div>
+      )}
+
       {/* Search & Filter Toolbar */}
-      <div className="flex items-center justify-between gap-3 bg-white/5 border border-white/10 p-2.5 rounded-lg">
+      <div className="stagger-card flex items-center justify-between gap-3 bg-white/5 border border-white/10 p-2.5 rounded-lg">
         <div className="relative flex-1 max-w-md">
           <Search className="w-3.5 h-3.5 text-gray-500 absolute left-2.5 top-1/2 -translate-y-1/2" />
           <input
@@ -137,15 +344,24 @@ export const GenericCsvReportView: React.FC<GenericCsvReportViewProps> = ({ data
         </div>
 
         <div className="flex items-center gap-3 text-xs text-gray-400">
+          {!showChart && (
+            <button
+              onClick={() => setShowChart(true)}
+              className="cursor-pointer text-xs font-mono text-[#9146FF] hover:underline"
+            >
+              Show 3D Chart
+            </button>
+          )}
+
           <div className="flex items-center gap-1.5">
-            <span className="text-[11px] text-gray-500">Rows:</span>
+            <span className="text-[11px] text-gray-500 font-mono">Rows:</span>
             <select
               value={pageSize}
               onChange={(e) => {
                 setPageSize(Number(e.target.value));
                 setCurrentPage(1);
               }}
-              className="bg-[#18181B] border border-white/10 text-gray-200 rounded px-2 py-1 focus:border-[#9146FF] focus:outline-none text-xs font-mono"
+              className="bg-[#18181B] border border-white/10 text-gray-200 rounded px-2 py-1 focus:border-[#9146FF] focus:outline-none text-xs font-mono cursor-pointer"
             >
               <option value={15}>15</option>
               <option value={25}>25</option>
@@ -162,7 +378,7 @@ export const GenericCsvReportView: React.FC<GenericCsvReportViewProps> = ({ data
       </div>
 
       {/* Styled Table matching Professional Polish */}
-      <div className="overflow-hidden rounded-xl border border-white/10 bg-[#18181B]">
+      <div className="stagger-card overflow-hidden rounded-xl border border-white/10 bg-[#18181B]">
         <div className="overflow-x-auto max-h-[560px] scrollbar-thin scrollbar-thumb-white/10">
           <table className="w-full border-collapse text-left text-xs">
             <thead className="sticky top-0 bg-[#252529] shadow-sm z-10">

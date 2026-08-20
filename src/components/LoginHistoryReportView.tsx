@@ -1,44 +1,137 @@
-import React, { useMemo } from 'react';
-import { ShieldCheck } from 'lucide-react';
-import { ParsedCsvData } from '../types';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
+import { ShieldCheck, MapPin, Smartphone, Sparkles, Globe } from 'lucide-react';
+import gsap from 'gsap';
+import { ParsedCsvData, ChartStyle } from '../types';
+import { UnifiedSectionChart } from './charts/UnifiedSectionChart';
+import { ChartDataPoint } from './charts/ThreeDVisualization';
 
 interface LoginHistoryReportViewProps {
   data: ParsedCsvData;
   fileName: string;
+  defaultChartStyle?: ChartStyle;
+  animateReveal?: boolean;
 }
 
-export const LoginHistoryReportView: React.FC<LoginHistoryReportViewProps> = ({ data }) => {
+export const LoginHistoryReportView: React.FC<LoginHistoryReportViewProps> = ({
+  data,
+  fileName,
+  defaultChartStyle = 'scatter',
+  animateReveal = true
+}) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [chartDimension, setChartDimension] = useState<'timeline' | 'locations' | 'devices'>('timeline');
+
+  useEffect(() => {
+    if (!animateReveal || !containerRef.current) return;
+    const ctx = gsap.context(() => {
+      gsap.from('.stagger-card', {
+        opacity: 0,
+        y: 16,
+        duration: 0.45,
+        stagger: 0.08,
+        ease: 'power2.out'
+      });
+    }, containerRef);
+
+    return () => ctx.revert();
+  }, [animateReveal, fileName]);
+
   const stats = useMemo(() => {
     const locations = new Set<string>();
     const ips = new Set<string>();
     let twoFaSuccessCount = 0;
 
+    const dateCounts: Record<string, number> = {};
+    const locationCounts: Record<string, number> = {};
+    const deviceCounts: Record<string, number> = {};
+
     for (const r of data.rows) {
       const city = r.city || '';
       const country = r.country || '';
-      if (city || country) {
-        locations.add(`${city ? city + ', ' : ''}${country}`);
-      }
+      const locStr = [city, country].filter(Boolean).join(', ') || 'Unknown Location';
+      if (city || country) locations.add(locStr);
+      locationCounts[locStr] = (locationCounts[locStr] || 0) + 1;
+
       const ip = r.ip_address || r.ip;
       if (ip) ips.add(String(ip));
 
       if (r.two_factor_verified === true || String(r.two_factor_verified).toLowerCase() === 'true') {
         twoFaSuccessCount++;
       }
+
+      const client = String(r.client_type || r.device || 'Web Browser');
+      deviceCounts[client] = (deviceCounts[client] || 0) + 1;
+
+      const rawDate = String(r.login_timestamp || r.timestamp || r.date || '');
+      if (rawDate) {
+        try {
+          const d = new Date(rawDate);
+          if (!isNaN(d.getTime())) {
+            const dateKey = d.toISOString().slice(0, 10);
+            dateCounts[dateKey] = (dateCounts[dateKey] || 0) + 1;
+          }
+        } catch {
+          // ignore
+        }
+      }
     }
+
+    const timelineChartData: ChartDataPoint[] = Object.entries(dateCounts)
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([date, count]) => ({
+        label: date,
+        value: count,
+        category: 'Daily Authentications',
+        date
+      }));
+
+    const locationChartData: ChartDataPoint[] = Object.entries(locationCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 20)
+      .map(([loc, count], idx) => ({
+        label: loc,
+        value: count,
+        secondaryValue: idx + 1,
+        category: `${count} Logins from ${loc}`
+      }));
+
+    const deviceChartData: ChartDataPoint[] = Object.entries(deviceCounts)
+      .sort((a, b) => b[1] - a[1])
+      .map(([dev, count]) => ({
+        label: dev,
+        value: count,
+        category: `${count} Logins on ${dev}`
+      }));
 
     return {
       totalLogins: data.rows.length,
       uniqueLocations: locations.size,
       uniqueIps: ips.size,
-      twoFaSuccessCount
+      twoFaSuccessCount,
+      timelineChartData,
+      locationChartData,
+      deviceChartData
     };
   }, [data.rows]);
 
+  const activeChartData =
+    chartDimension === 'timeline'
+      ? stats.timelineChartData
+      : chartDimension === 'locations'
+      ? stats.locationChartData
+      : stats.deviceChartData;
+
+  const activeChartTitle =
+    chartDimension === 'timeline'
+      ? 'Login Authentication Events Over Time'
+      : chartDimension === 'locations'
+      ? 'Geographic Locations Breakdown'
+      : 'Client Platforms & Devices';
+
   return (
-    <div className="space-y-4">
+    <div ref={containerRef} className="space-y-4">
       {/* Metric Cards */}
-      <div className="flex flex-wrap gap-4">
+      <div className="flex flex-wrap gap-4 stagger-card">
         <div className="flex-1 min-w-[160px] rounded-xl border border-white/10 bg-[#18181B] p-4">
           <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">
             Recorded Logins
@@ -46,6 +139,7 @@ export const LoginHistoryReportView: React.FC<LoginHistoryReportViewProps> = ({ 
           <p className="text-2xl font-mono font-bold text-white mt-1">
             {stats.totalLogins}
           </p>
+          <p className="text-[11px] font-mono text-gray-400 mt-0.5">Authentication sessions</p>
         </div>
 
         <div className="flex-1 min-w-[160px] rounded-xl border border-white/10 bg-[#18181B] p-4">
@@ -55,6 +149,7 @@ export const LoginHistoryReportView: React.FC<LoginHistoryReportViewProps> = ({ 
           <p className="text-2xl font-mono font-bold text-white mt-1">
             {stats.uniqueIps}
           </p>
+          <p className="text-[11px] font-mono text-gray-400 mt-0.5">Network origins</p>
         </div>
 
         <div className="flex-1 min-w-[160px] rounded-xl border border-white/10 bg-[#18181B] p-4">
@@ -64,11 +159,59 @@ export const LoginHistoryReportView: React.FC<LoginHistoryReportViewProps> = ({ 
           <p className="text-2xl font-mono font-bold text-emerald-400 mt-1">
             {stats.twoFaSuccessCount}
           </p>
+          <p className="text-[11px] font-mono text-gray-400 mt-0.5">
+            {stats.totalLogins > 0 ? Math.round((stats.twoFaSuccessCount / stats.totalLogins) * 100) : 0}% secured
+          </p>
         </div>
       </div>
 
+      {/* 3D / Bar / Scatter / Trendline Chart */}
+      <div className="stagger-card space-y-2">
+        <div className="flex items-center gap-1 bg-black/40 p-1 rounded-lg border border-white/10 text-xs font-mono w-fit">
+          <button
+            onClick={() => setChartDimension('timeline')}
+            className={`cursor-pointer px-3 py-1 rounded transition-colors ${
+              chartDimension === 'timeline'
+                ? 'bg-[#9146FF] text-white font-bold'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            Authentication Timeline
+          </button>
+          <button
+            onClick={() => setChartDimension('locations')}
+            className={`cursor-pointer px-3 py-1 rounded transition-colors ${
+              chartDimension === 'locations'
+                ? 'bg-[#9146FF] text-white font-bold'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            Geographic Locations (3D)
+          </button>
+          <button
+            onClick={() => setChartDimension('devices')}
+            className={`cursor-pointer px-3 py-1 rounded transition-colors ${
+              chartDimension === 'devices'
+                ? 'bg-[#9146FF] text-white font-bold'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            Client Devices
+          </button>
+        </div>
+
+        <UnifiedSectionChart
+          data={activeChartData}
+          title={activeChartTitle}
+          yAxisLabel="Logins"
+          metricLabel="Logins"
+          defaultStyle={defaultChartStyle}
+          height={320}
+        />
+      </div>
+
       {/* Login Table */}
-      <div className="overflow-hidden rounded-xl border border-white/10 bg-[#18181B]">
+      <div className="stagger-card overflow-hidden rounded-xl border border-white/10 bg-[#18181B]">
         <div className="overflow-x-auto max-h-[560px] scrollbar-thin scrollbar-thumb-white/10">
           <table className="w-full border-collapse text-left text-xs">
             <thead className="sticky top-0 bg-[#252529] shadow-sm z-10">

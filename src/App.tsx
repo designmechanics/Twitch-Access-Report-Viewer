@@ -3,7 +3,8 @@ import { Header } from './components/Header';
 import { ZipDropzone } from './components/ZipDropzone';
 import { FileTreeSidebar } from './components/FileTreeSidebar';
 import { ReportViewer } from './components/ReportViewer';
-import { FileTreeNode, ZipFileEntry, TwitchReportStats } from './types';
+import { SettingsModal } from './components/SettingsModal';
+import { FileTreeNode, ZipFileEntry, TwitchReportStats, SectionChartSettings } from './types';
 import { parseTwitchZip } from './utils/zipParser';
 
 export default function App() {
@@ -16,6 +17,22 @@ export default function App() {
   const [archiveHash, setArchiveHash] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  // Global Section Chart Settings
+  const [chartSettings, setChartSettings] = useState<SectionChartSettings>({
+    chat: '3d',
+    watchTime: 'line',
+    subscriptions: 'bar',
+    bits: '3d',
+    security: 'scatter',
+    channelPoints: '3d',
+    userDetails: '3d',
+    generic: 'bar',
+    animateReveal: true,
+    colorTheme: 'twitch'
+  });
 
   const processZip = async (fileOrBlob: File | Blob, name?: string) => {
     try {
@@ -114,6 +131,9 @@ export default function App() {
         onFileUpload={handleFileUpload}
         onReset={handleReset}
         isLoading={isLoading}
+        isSidebarOpen={isSidebarOpen}
+        onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
+        onOpenSettings={() => setIsSettingsOpen(true)}
       />
 
       {error && (
@@ -132,16 +152,18 @@ export default function App() {
       <main className="flex flex-1 overflow-hidden min-h-0 w-full">
         {stats && tree.length > 0 ? (
           <>
-            <FileTreeSidebar
-              tree={tree}
-              selectedFile={selectedFile}
-              onSelectFile={handleSelectFile}
-              categories={stats.categories}
-              isOverviewSelected={isOverviewSelected}
-              onSelectOverview={handleSelectOverview}
-              populatedCount={stats.populatedFilesCount}
-              totalFilesCount={stats.totalFiles}
-            />
+            {isSidebarOpen && (
+              <FileTreeSidebar
+                tree={tree}
+                selectedFile={selectedFile}
+                onSelectFile={handleSelectFile}
+                categories={stats.categories}
+                isOverviewSelected={isOverviewSelected}
+                onSelectOverview={handleSelectOverview}
+                populatedCount={stats.populatedFilesCount}
+                totalFilesCount={stats.totalFiles}
+              />
+            )}
             <ReportViewer
               selectedFile={selectedFile}
               archiveName={archiveName}
@@ -150,6 +172,7 @@ export default function App() {
               onSelectFile={handleSelectFile}
               isOverviewSelected={isOverviewSelected}
               onSelectOverview={handleSelectOverview}
+              chartSettings={chartSettings}
             />
           </>
         ) : (
@@ -161,6 +184,14 @@ export default function App() {
           </div>
         )}
       </main>
+
+      {/* Visual Analytics & Settings Modal */}
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        settings={chartSettings}
+        onUpdateSettings={setChartSettings}
+      />
 
       {/* Professional Polish Footer */}
       <footer className="flex h-9 w-full items-center justify-between border-t border-white/10 bg-[#121214] px-6 text-[10px] text-gray-500 uppercase tracking-widest shrink-0 font-mono">

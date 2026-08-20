@@ -1,39 +1,105 @@
-import React, { useMemo } from 'react';
-import { Gem } from 'lucide-react';
-import { ParsedCsvData } from '../types';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
+import { Gem, Sparkles, TrendingUp } from 'lucide-react';
+import gsap from 'gsap';
+import { ParsedCsvData, ChartStyle } from '../types';
+import { UnifiedSectionChart } from './charts/UnifiedSectionChart';
+import { ChartDataPoint } from './charts/ThreeDVisualization';
 
 interface BitsReportViewProps {
   data: ParsedCsvData;
   fileName: string;
+  defaultChartStyle?: ChartStyle;
+  animateReveal?: boolean;
 }
 
-export const BitsReportView: React.FC<BitsReportViewProps> = ({ data }) => {
+export const BitsReportView: React.FC<BitsReportViewProps> = ({
+  data,
+  fileName,
+  defaultChartStyle = '3d',
+  animateReveal = true
+}) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [chartDimension, setChartDimension] = useState<'streamers' | 'timeline'>('streamers');
+
+  useEffect(() => {
+    if (!animateReveal || !containerRef.current) return;
+    const ctx = gsap.context(() => {
+      gsap.from('.stagger-card', {
+        opacity: 0,
+        y: 16,
+        duration: 0.45,
+        stagger: 0.08,
+        ease: 'power2.out'
+      });
+    }, containerRef);
+
+    return () => ctx.revert();
+  }, [animateReveal, fileName]);
+
   const analytics = useMemo(() => {
     let totalBits = 0;
     const streamerBits: Record<string, number> = {};
+    const dateBits: Record<string, number> = {};
 
     for (const r of data.rows) {
       const bits = Number(r.bits_amount || r.amount || r.bits || 0);
       totalBits += isNaN(bits) ? 0 : bits;
       const ch = String(r.channel_name || r.streamer || r.channel || 'Streamer');
       streamerBits[ch] = (streamerBits[ch] || 0) + bits;
+
+      const rawDate = String(r.timestamp || r.date || '');
+      if (rawDate) {
+        try {
+          const d = new Date(rawDate);
+          if (!isNaN(d.getTime())) {
+            const dateKey = d.toISOString().slice(0, 10);
+            dateBits[dateKey] = (dateBits[dateKey] || 0) + bits;
+          }
+        } catch {
+          // ignore
+        }
+      }
     }
 
     const topStreamers = Object.entries(streamerBits)
       .map(([name, amount]) => ({ name, amount }))
       .sort((a, b) => b.amount - a.amount);
 
+    const streamerChartData: ChartDataPoint[] = topStreamers.slice(0, 20).map((s, idx) => ({
+      label: s.name,
+      value: s.amount,
+      secondaryValue: idx + 1,
+      category: `${s.amount.toLocaleString()} Bits Cheered`
+    }));
+
+    const timelineChartData: ChartDataPoint[] = Object.entries(dateBits)
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([date, amount]) => ({
+        label: date,
+        value: amount,
+        category: 'Daily Bits Cheered',
+        date
+      }));
+
     return {
       totalBits,
       cheerCount: data.rows.length,
-      topStreamers
+      topStreamers,
+      streamerChartData,
+      timelineChartData
     };
   }, [data.rows]);
 
+  const activeChartData = chartDimension === 'streamers' ? analytics.streamerChartData : analytics.timelineChartData;
+  const activeChartTitle =
+    chartDimension === 'streamers'
+      ? 'Bits Cheered by Streamer (Top Recipients)'
+      : 'Bits Cheered Over Time (Timeline)';
+
   return (
-    <div className="space-y-4">
+    <div ref={containerRef} className="space-y-4">
       {/* Metric Cards */}
-      <div className="flex flex-wrap gap-4">
+      <div className="flex flex-wrap gap-4 stagger-card">
         <div className="flex-1 min-w-[160px] rounded-xl border border-white/10 bg-[#18181B] p-4">
           <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">
             Total Bits Cheered
@@ -41,6 +107,7 @@ export const BitsReportView: React.FC<BitsReportViewProps> = ({ data }) => {
           <p className="text-2xl font-mono font-bold text-amber-400 mt-1">
             {analytics.totalBits.toLocaleString()}
           </p>
+          <p className="text-[11px] font-mono text-gray-400 mt-0.5">Community cheers</p>
         </div>
 
         <div className="flex-1 min-w-[160px] rounded-xl border border-white/10 bg-[#18181B] p-4">
@@ -50,6 +117,7 @@ export const BitsReportView: React.FC<BitsReportViewProps> = ({ data }) => {
           <p className="text-2xl font-mono font-bold text-white mt-1">
             {analytics.cheerCount}
           </p>
+          <p className="text-[11px] font-mono text-gray-400 mt-0.5">Transactions</p>
         </div>
 
         <div className="flex-1 min-w-[160px] rounded-xl border border-white/10 bg-[#18181B] p-4">
@@ -59,11 +127,49 @@ export const BitsReportView: React.FC<BitsReportViewProps> = ({ data }) => {
           <p className="text-2xl font-mono font-bold text-[#9146FF] mt-1 truncate">
             {analytics.topStreamers[0]?.name || 'N/A'}
           </p>
+          <p className="text-[11px] font-mono text-gray-400 mt-0.5 truncate">
+            {analytics.topStreamers[0]?.amount?.toLocaleString() || 0} bits
+          </p>
         </div>
       </div>
 
+      {/* 3D / Bar / Scatter / Trendline Chart */}
+      <div className="stagger-card space-y-2">
+        <div className="flex items-center gap-1 bg-black/40 p-1 rounded-lg border border-white/10 text-xs font-mono w-fit">
+          <button
+            onClick={() => setChartDimension('streamers')}
+            className={`cursor-pointer px-3 py-1 rounded transition-colors ${
+              chartDimension === 'streamers'
+                ? 'bg-[#9146FF] text-white font-bold'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            Streamers (3D Bits)
+          </button>
+          <button
+            onClick={() => setChartDimension('timeline')}
+            className={`cursor-pointer px-3 py-1 rounded transition-colors ${
+              chartDimension === 'timeline'
+                ? 'bg-[#9146FF] text-white font-bold'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            Cheer Timeline
+          </button>
+        </div>
+
+        <UnifiedSectionChart
+          data={activeChartData}
+          title={activeChartTitle}
+          yAxisLabel="Bits"
+          metricLabel="Bits"
+          defaultStyle={defaultChartStyle}
+          height={320}
+        />
+      </div>
+
       {/* Table */}
-      <div className="overflow-hidden rounded-xl border border-white/10 bg-[#18181B]">
+      <div className="stagger-card overflow-hidden rounded-xl border border-white/10 bg-[#18181B]">
         <div className="overflow-x-auto max-h-[560px] scrollbar-thin scrollbar-thumb-white/10">
           <table className="w-full border-collapse text-left text-xs">
             <thead className="sticky top-0 bg-[#252529] shadow-sm z-10">
@@ -84,7 +190,7 @@ export const BitsReportView: React.FC<BitsReportViewProps> = ({ data }) => {
             </thead>
             <tbody className="divide-y divide-white/5 font-mono text-gray-400">
               {data.rows.map((row, idx) => {
-                const channel = String(row.channel_name || row.channel || 'Streamer');
+                const channel = String(row.channel_name || row.streamer || row.channel || 'Streamer');
                 const bits = Number(row.bits_amount || row.bits || 0);
                 const message = String(row.cheer_message || row.message || row.memo || '');
                 const timestamp = String(row.timestamp || row.date || '');

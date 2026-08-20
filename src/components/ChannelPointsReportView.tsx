@@ -1,20 +1,57 @@
-import React, { useMemo } from 'react';
-import { Sparkles } from 'lucide-react';
-import { ParsedCsvData } from '../types';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
+import { Sparkles, Trophy, Flame } from 'lucide-react';
+import gsap from 'gsap';
+import { ParsedCsvData, ChartStyle } from '../types';
+import { UnifiedSectionChart } from './charts/UnifiedSectionChart';
+import { ChartDataPoint } from './charts/ThreeDVisualization';
 
 interface ChannelPointsReportViewProps {
   data: ParsedCsvData;
   fileName: string;
+  defaultChartStyle?: ChartStyle;
+  animateReveal?: boolean;
 }
 
-export const ChannelPointsReportView: React.FC<ChannelPointsReportViewProps> = ({ data }) => {
+export const ChannelPointsReportView: React.FC<ChannelPointsReportViewProps> = ({
+  data,
+  fileName,
+  defaultChartStyle = '3d',
+  animateReveal = true
+}) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [chartDimension, setChartDimension] = useState<'channels' | 'rewards'>('channels');
+
+  useEffect(() => {
+    if (!animateReveal || !containerRef.current) return;
+    const ctx = gsap.context(() => {
+      gsap.from('.stagger-card', {
+        opacity: 0,
+        y: 16,
+        duration: 0.45,
+        stagger: 0.08,
+        ease: 'power2.out'
+      });
+    }, containerRef);
+
+    return () => ctx.revert();
+  }, [animateReveal, fileName]);
+
   const stats = useMemo(() => {
     let totalSpent = 0;
     let fulfilledCount = 0;
+    const channelSpent: Record<string, number> = {};
+    const rewardSpent: Record<string, number> = {};
 
     for (const r of data.rows) {
       const pts = Number(r.points_spent || r.points || r.amount || 0);
-      totalSpent += isNaN(pts) ? 0 : pts;
+      const safePts = isNaN(pts) ? 0 : pts;
+      totalSpent += safePts;
+
+      const ch = String(r.channel_name || r.channel || 'Streamer');
+      channelSpent[ch] = (channelSpent[ch] || 0) + safePts;
+
+      const reward = String(r.reward_title || r.reward || r.title || 'Reward');
+      rewardSpent[reward] = (rewardSpent[reward] || 0) + safePts;
 
       const status = String(r.status || '').toLowerCase();
       if (status.includes('fulfill') || status.includes('success') || status.includes('complete')) {
@@ -22,17 +59,44 @@ export const ChannelPointsReportView: React.FC<ChannelPointsReportViewProps> = (
       }
     }
 
+    const channelChartData: ChartDataPoint[] = Object.entries(channelSpent)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 20)
+      .map(([ch, pts], idx) => ({
+        label: ch,
+        value: pts,
+        secondaryValue: idx + 1,
+        category: `${pts.toLocaleString()} Points spent in #${ch}`
+      }));
+
+    const rewardChartData: ChartDataPoint[] = Object.entries(rewardSpent)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 20)
+      .map(([reward, pts]) => ({
+        label: reward,
+        value: pts,
+        category: `${pts.toLocaleString()} Points spent on ${reward}`
+      }));
+
     return {
       totalRedemptions: data.rows.length,
       totalSpent,
-      fulfilledCount
+      fulfilledCount,
+      channelChartData,
+      rewardChartData
     };
   }, [data.rows]);
 
+  const activeChartData = chartDimension === 'channels' ? stats.channelChartData : stats.rewardChartData;
+  const activeChartTitle =
+    chartDimension === 'channels'
+      ? 'Points Spent by Channel (Top Channels)'
+      : 'Points Spent by Custom Reward Category';
+
   return (
-    <div className="space-y-4">
+    <div ref={containerRef} className="space-y-4">
       {/* Metric Cards */}
-      <div className="flex flex-wrap gap-4">
+      <div className="flex flex-wrap gap-4 stagger-card">
         <div className="flex-1 min-w-[160px] rounded-xl border border-white/10 bg-[#18181B] p-4">
           <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">
             Total Points Spent
@@ -40,6 +104,7 @@ export const ChannelPointsReportView: React.FC<ChannelPointsReportViewProps> = (
           <p className="text-2xl font-mono font-bold text-[#9146FF] mt-1">
             {stats.totalSpent.toLocaleString()}
           </p>
+          <p className="text-[11px] font-mono text-gray-400 mt-0.5">Channel points</p>
         </div>
 
         <div className="flex-1 min-w-[160px] rounded-xl border border-white/10 bg-[#18181B] p-4">
@@ -49,6 +114,7 @@ export const ChannelPointsReportView: React.FC<ChannelPointsReportViewProps> = (
           <p className="text-2xl font-mono font-bold text-white mt-1">
             {stats.totalRedemptions}
           </p>
+          <p className="text-[11px] font-mono text-gray-400 mt-0.5">Redemptions</p>
         </div>
 
         <div className="flex-1 min-w-[160px] rounded-xl border border-white/10 bg-[#18181B] p-4">
@@ -58,11 +124,49 @@ export const ChannelPointsReportView: React.FC<ChannelPointsReportViewProps> = (
           <p className="text-2xl font-mono font-bold text-emerald-400 mt-1">
             {stats.fulfilledCount}
           </p>
+          <p className="text-[11px] font-mono text-gray-400 mt-0.5">
+            {stats.totalRedemptions > 0 ? Math.round((stats.fulfilledCount / stats.totalRedemptions) * 100) : 0}% completed
+          </p>
         </div>
       </div>
 
+      {/* 3D / Bar / Scatter / Trendline Chart */}
+      <div className="stagger-card space-y-2">
+        <div className="flex items-center gap-1 bg-black/40 p-1 rounded-lg border border-white/10 text-xs font-mono w-fit">
+          <button
+            onClick={() => setChartDimension('channels')}
+            className={`cursor-pointer px-3 py-1 rounded transition-colors ${
+              chartDimension === 'channels'
+                ? 'bg-[#9146FF] text-white font-bold'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            Channels (3D Points)
+          </button>
+          <button
+            onClick={() => setChartDimension('rewards')}
+            className={`cursor-pointer px-3 py-1 rounded transition-colors ${
+              chartDimension === 'rewards'
+                ? 'bg-[#9146FF] text-white font-bold'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            Top Rewards
+          </button>
+        </div>
+
+        <UnifiedSectionChart
+          data={activeChartData}
+          title={activeChartTitle}
+          yAxisLabel="Points"
+          metricLabel="Points"
+          defaultStyle={defaultChartStyle}
+          height={320}
+        />
+      </div>
+
       {/* Table */}
-      <div className="overflow-hidden rounded-xl border border-white/10 bg-[#18181B]">
+      <div className="stagger-card overflow-hidden rounded-xl border border-white/10 bg-[#18181B]">
         <div className="overflow-x-auto max-h-[560px] scrollbar-thin scrollbar-thumb-white/10">
           <table className="w-full border-collapse text-left text-xs">
             <thead className="sticky top-0 bg-[#252529] shadow-sm z-10">

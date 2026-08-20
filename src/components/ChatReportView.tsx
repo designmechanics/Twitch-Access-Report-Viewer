@@ -1,15 +1,43 @@
-import React, { useState, useMemo } from 'react';
-import { MessageSquare, Search, Filter } from 'lucide-react';
-import { ParsedCsvData } from '../types';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { MessageSquare, Search, Filter, Sparkles, BarChart2, Calendar, Radio } from 'lucide-react';
+import gsap from 'gsap';
+import { ParsedCsvData, ChartStyle } from '../types';
+import { UnifiedSectionChart } from './charts/UnifiedSectionChart';
+import { ChartDataPoint } from './charts/ThreeDVisualization';
 
 interface ChatReportViewProps {
   data: ParsedCsvData;
   fileName: string;
+  defaultChartStyle?: ChartStyle;
+  animateReveal?: boolean;
 }
 
-export const ChatReportView: React.FC<ChatReportViewProps> = ({ data }) => {
+export const ChatReportView: React.FC<ChatReportViewProps> = ({
+  data,
+  fileName,
+  defaultChartStyle = '3d',
+  animateReveal = true
+}) => {
+  const containerRef = useRef<HTMLDivElement>(null);
   const [channelFilter, setChannelFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [chartDimension, setChartDimension] = useState<'channels' | 'timeline' | 'hourOfDay'>('channels');
+
+  // GSAP Stagger Reveal
+  useEffect(() => {
+    if (!animateReveal || !containerRef.current) return;
+    const ctx = gsap.context(() => {
+      gsap.from('.stagger-card', {
+        opacity: 0,
+        y: 16,
+        duration: 0.45,
+        stagger: 0.08,
+        ease: 'power2.out'
+      });
+    }, containerRef);
+
+    return () => ctx.revert();
+  }, [animateReveal, fileName]);
 
   const channels = useMemo(() => {
     const set = new Set<string>();
@@ -36,25 +64,92 @@ export const ChatReportView: React.FC<ChatReportViewProps> = ({ data }) => {
   const stats = useMemo(() => {
     const total = data.rows.length;
     const channelCounts: Record<string, number> = {};
+    const dateCounts: Record<string, number> = {};
+    const hourCounts: Record<number, number> = {};
+
     for (const r of data.rows) {
       const ch = String(r.channel_name || r.channel || 'unknown');
       channelCounts[ch] = (channelCounts[ch] || 0) + 1;
+
+      const rawDate = String(r.timestamp || r.date || r.created_at || '');
+      if (rawDate) {
+        try {
+          const d = new Date(rawDate);
+          if (!isNaN(d.getTime())) {
+            const dateKey = d.toISOString().slice(0, 10);
+            dateCounts[dateKey] = (dateCounts[dateKey] || 0) + 1;
+            const hour = d.getHours();
+            hourCounts[hour] = (hourCounts[hour] || 0) + 1;
+          }
+        } catch {
+          // ignore
+        }
+      }
     }
+
     const sortedChannels = Object.entries(channelCounts).sort((a, b) => b[1] - a[1]);
     const topChannel = sortedChannels[0] ? sortedChannels[0][0] : 'None';
+    const topChannelCount = sortedChannels[0] ? sortedChannels[0][1] : 0;
+
+    // Channel chart points
+    const channelChartData: ChartDataPoint[] = sortedChannels.slice(0, 20).map(([channel, count], i) => ({
+      label: channel,
+      value: count,
+      secondaryValue: i + 1,
+      category: `${count.toLocaleString()} messages in #${channel}`
+    }));
+
+    // Timeline chart points
+    const timelineChartData: ChartDataPoint[] = Object.entries(dateCounts)
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([date, count]) => ({
+        label: date,
+        value: count,
+        category: 'Daily Chat Messages',
+        date
+      }));
+
+    // Hour of day distribution
+    const hourChartData: ChartDataPoint[] = Array.from({ length: 24 }, (_, h) => {
+      const count = hourCounts[h] || 0;
+      const ampm = h >= 12 ? `${h === 12 ? 12 : h - 12} PM` : `${h === 0 ? 12 : h} AM`;
+      return {
+        label: ampm,
+        value: count,
+        category: `Activity at ${ampm}`
+      };
+    });
 
     return {
       total,
       uniqueChannels: channels.length,
       topChannel,
-      topChannelCount: sortedChannels[0] ? sortedChannels[0][1] : 0
+      topChannelCount,
+      sortedChannels,
+      channelChartData,
+      timelineChartData,
+      hourChartData
     };
   }, [data.rows, channels]);
 
+  const activeChartData =
+    chartDimension === 'channels'
+      ? stats.channelChartData
+      : chartDimension === 'timeline'
+      ? stats.timelineChartData
+      : stats.hourChartData;
+
+  const activeChartTitle =
+    chartDimension === 'channels'
+      ? 'Most Chatted Channels (Message Volume vs Channel)'
+      : chartDimension === 'timeline'
+      ? 'Chat Messages Logged Over Time (Timeline)'
+      : 'Chatting Activity by Hour of Day';
+
   return (
-    <div className="space-y-4">
+    <div ref={containerRef} className="space-y-4">
       {/* Metric Cards */}
-      <div className="flex flex-wrap gap-4">
+      <div className="flex flex-wrap gap-4 stagger-card">
         <div className="flex-1 min-w-[160px] rounded-xl border border-white/10 bg-[#18181B] p-4">
           <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">
             Total Messages
@@ -62,14 +157,18 @@ export const ChatReportView: React.FC<ChatReportViewProps> = ({ data }) => {
           <p className="text-2xl font-mono font-bold text-white mt-1">
             {stats.total.toLocaleString()}
           </p>
+          <p className="text-[11px] font-mono text-gray-400 mt-0.5">Across all channels</p>
         </div>
 
         <div className="flex-1 min-w-[160px] rounded-xl border border-white/10 bg-[#18181B] p-4">
           <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">
-            Top Channel
+            Most Chatted Channel
           </p>
           <p className="text-2xl font-mono font-bold text-[#9146FF] mt-1 truncate">
-            {stats.topChannel}
+            #{stats.topChannel}
+          </p>
+          <p className="text-[11px] font-mono text-gray-400 mt-0.5">
+            {stats.topChannelCount.toLocaleString()} messages ({stats.total > 0 ? Math.round((stats.topChannelCount / stats.total) * 100) : 0}%)
           </p>
         </div>
 
@@ -80,11 +179,59 @@ export const ChatReportView: React.FC<ChatReportViewProps> = ({ data }) => {
           <p className="text-2xl font-mono font-bold text-white mt-1">
             {stats.uniqueChannels}
           </p>
+          <p className="text-[11px] font-mono text-gray-400 mt-0.5">Unique chatrooms</p>
         </div>
       </div>
 
+      {/* 3D / Bar / Scatter / Trendline Chart */}
+      <div className="stagger-card space-y-2">
+        <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+          <div className="flex items-center gap-1 bg-black/40 p-1 rounded-lg border border-white/10 text-xs font-mono">
+            <button
+              onClick={() => setChartDimension('channels')}
+              className={`cursor-pointer px-3 py-1 rounded transition-colors ${
+                chartDimension === 'channels'
+                  ? 'bg-[#9146FF] text-white font-bold'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              Channels (3D Volume)
+            </button>
+            <button
+              onClick={() => setChartDimension('timeline')}
+              className={`cursor-pointer px-3 py-1 rounded transition-colors ${
+                chartDimension === 'timeline'
+                  ? 'bg-[#9146FF] text-white font-bold'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              Timeline Over Time
+            </button>
+            <button
+              onClick={() => setChartDimension('hourOfDay')}
+              className={`cursor-pointer px-3 py-1 rounded transition-colors ${
+                chartDimension === 'hourOfDay'
+                  ? 'bg-[#9146FF] text-white font-bold'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              Time of Day
+            </button>
+          </div>
+        </div>
+
+        <UnifiedSectionChart
+          data={activeChartData}
+          title={activeChartTitle}
+          yAxisLabel="Messages"
+          metricLabel="Messages Sent"
+          defaultStyle={defaultChartStyle}
+          height={330}
+        />
+      </div>
+
       {/* Filter Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-white/5 border border-white/10 p-2.5 rounded-lg">
+      <div className="stagger-card flex flex-wrap items-center justify-between gap-3 bg-white/5 border border-white/10 p-2.5 rounded-lg">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="w-3.5 h-3.5 text-gray-500 absolute left-2.5 top-1/2 -translate-y-1/2" />
           <input
@@ -115,7 +262,7 @@ export const ChatReportView: React.FC<ChatReportViewProps> = ({ data }) => {
       </div>
 
       {/* Table view matching design layout */}
-      <div className="overflow-hidden rounded-xl border border-white/10 bg-[#18181B]">
+      <div className="stagger-card overflow-hidden rounded-xl border border-white/10 bg-[#18181B]">
         <div className="overflow-x-auto max-h-[560px] scrollbar-thin scrollbar-thumb-white/10">
           <table className="w-full border-collapse text-left text-xs">
             <thead className="sticky top-0 bg-[#252529] shadow-sm z-10">

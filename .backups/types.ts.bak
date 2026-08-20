@@ -7,6 +7,8 @@ export interface ZipFileEntry {
   extension: string;
   blob?: Blob;
   category: string;
+  rowCount?: number;
+  isPopulated?: boolean;
 }
 
 export interface FileTreeNode {
@@ -15,6 +17,8 @@ export interface FileTreeNode {
   isDir: boolean;
   size?: number;
   extension?: string;
+  rowCount?: number;
+  isPopulated?: boolean;
   children?: FileTreeNode[];
   fileEntry?: ZipFileEntry;
 }
@@ -49,5 +53,8 @@ export interface TwitchReportStats {
   csvCount: number;
   jsonCount: number;
   otherCount: number;
-  categories: { name: string; count: number }[];
+  populatedFilesCount: number;
+  emptyFilesCount: number;
+  totalRecordsCount: number;
+  categories: { name: string; count: number; populatedCount: number }[];
 }
