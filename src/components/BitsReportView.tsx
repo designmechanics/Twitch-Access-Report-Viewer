@@ -224,12 +224,12 @@ export const BitsReportView: React.FC<BitsReportViewProps> = ({
           <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">
             Top Streamer Supported
           </p>
-          <p className="text-xl font-mono font-bold text-[#bf94ff] mt-1 truncate flex items-center gap-1.5" title={analytics.topStreamers[0]?.name}>
+          <div className="text-xl font-mono font-bold text-[#bf94ff] mt-1 truncate flex items-center gap-1.5" title={analytics.topStreamers[0]?.name}>
             {analytics.topStreamers[0]?.name && (
               <StreamerAvatar channelName={analytics.topStreamers[0].name} className="w-5 h-5 rounded-md inline-block shrink-0" />
             )}
             <span className="truncate">{analytics.topStreamers[0]?.name || 'N/A'}</span>
-          </p>
+          </div>
           <p className="text-[11px] font-mono text-gray-400 mt-0.5">
             {analytics.topStreamers[0]?.amount?.toLocaleString() || 0} bits cheered
           </p>

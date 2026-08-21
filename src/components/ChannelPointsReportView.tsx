@@ -234,12 +234,12 @@ export const ChannelPointsReportView: React.FC<ChannelPointsReportViewProps> = (
           <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">
             Top Streamer Channel
           </p>
-          <p className="text-xl font-mono font-bold text-amber-400 mt-1 truncate flex items-center gap-1.5" title={stats.channelChartData[0]?.label}>
+          <div className="text-xl font-mono font-bold text-amber-400 mt-1 truncate flex items-center gap-1.5" title={stats.channelChartData[0]?.label}>
             {stats.channelChartData[0]?.label && (
               <StreamerAvatar channelName={stats.channelChartData[0].label} className="w-5 h-5 rounded-md inline-block shrink-0" />
             )}
             <span className="truncate">{stats.channelChartData[0]?.label || 'N/A'}</span>
-          </p>
+          </div>
           <p className="text-[11px] font-mono text-gray-400 mt-0.5">
             {stats.channelChartData.length} channels total
           </p>

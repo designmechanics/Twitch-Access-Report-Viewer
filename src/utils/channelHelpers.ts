@@ -11,6 +11,7 @@ export interface NormalizedSubInfo {
   isPrime: boolean;
   isMultiMonth: boolean;
   tenureMonths: number;
+  isCumulativeTenure: boolean;
   streakMonths: number;
   isGift: boolean;
   isGiftSent: boolean;
@@ -145,6 +146,7 @@ export function extractNormalizedSub(row: Record<string, any>): NormalizedSubInf
   const channel = extractStreamerName(row, 'Twitch Streamer');
   const tierInfo = extractSubscriptionTier(row);
 
+  const isCumulativeTenure = Boolean(row.tenure_months || row.cumulative_months || row.streak_months || row.tenure);
   const tenure = Number(
     row.tenure_months ||
       row.cumulative_months ||
@@ -194,19 +196,50 @@ export function extractNormalizedSub(row: Record<string, any>): NormalizedSubInf
   const isGiftSent = Boolean(recipientName);
   const isGiftReceived = isGiftFlag && Boolean(gifterName);
 
-  // Status Detection
-  const rawStatus = String(row.status || row.state || (row.ended_at ? 'Expired' : 'Active')).trim();
-  const lowerStatus = rawStatus.toLowerCase();
-  const isActive =
-    lowerStatus.includes('active') ||
-    lowerStatus.includes('valid') ||
-    lowerStatus.includes('ongoing') ||
-    (!lowerStatus.includes('expire') && !lowerStatus.includes('cancel') && !row.ended_at);
-
   // Dates
-  const startDate = row.started_at || row.start_date || row.created_at || row.purchased_at || row.timestamp || row.date;
-  const endDate = row.ended_at || row.end_date || row.expires_at || row.expiration_date || row.cancelled_at;
-  const renewalDate = row.renewal_date || row.next_billing_date || row.period_end || row.next_charge_date;
+  const startDateStr = row.started_at || row.start_date || row.created_at || row.purchased_at || row.timestamp || row.date || row.start_timestamp || row.started;
+  const endDateStr = row.ended_at || row.end_date || row.expires_at || row.expiration_date || row.cancelled_at || row.end_timestamp || row.ended || row.expiration;
+  const renewalDateStr = row.renewal_date || row.next_billing_date || row.period_end || row.next_charge_date;
+
+  // Status Detection & Date Math
+  const rawStatus = row.status || row.state;
+  const lowerStatus = rawStatus ? String(rawStatus).toLowerCase() : '';
+  
+  let isActive = false;
+  if (lowerStatus.includes('active') || lowerStatus.includes('valid') || lowerStatus.includes('ongoing')) {
+    isActive = true;
+  } else if (!lowerStatus.includes('expire') && !lowerStatus.includes('cancel') && !endDateStr) {
+    isActive = true;
+  }
+
+  // Force expiration if the real end date is in the past.
+  // This solves the bug where historical transactions are treated as perpetually active.
+  const now = new Date();
+  let realEndDate: Date | null = null;
+  
+  if (endDateStr) {
+    realEndDate = new Date(endDateStr);
+  } else if (startDateStr) {
+    const sDate = new Date(startDateStr);
+    if (!isNaN(sDate.getTime())) {
+      let monthsToAdd = tierInfo.isMultiMonth ? 3 : 1;
+      const txDuration = Number(row.duration_months || row.months || monthsToAdd);
+      const validTxDuration = isNaN(txDuration) || txDuration <= 0 ? monthsToAdd : txDuration;
+      
+      sDate.setMonth(sDate.getMonth() + validTxDuration);
+      realEndDate = sDate;
+    }
+  }
+
+  if (realEndDate && !isNaN(realEndDate.getTime())) {
+    if (realEndDate < now) {
+      isActive = false;
+    }
+  }
+
+  const startDate = startDateStr;
+  const endDate = endDateStr;
+  const renewalDate = renewalDateStr;
 
   // Financial
   const rawPrice = Number(row.price || row.cost || row.amount || row.total_amount || 0);
@@ -225,6 +258,7 @@ export function extractNormalizedSub(row: Record<string, any>): NormalizedSubInf
     isPrime: tierInfo.isPrime,
     isMultiMonth: tierInfo.isMultiMonth,
     tenureMonths,
+    isCumulativeTenure,
     streakMonths,
     isGift: isGiftFlag,
     isGiftSent,

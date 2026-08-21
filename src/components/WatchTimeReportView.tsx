@@ -311,11 +311,11 @@ export const WatchTimeReportView: React.FC<WatchTimeReportViewProps> = ({
             {+(inferenceSummary.longestContinuousSessionMins / 60).toFixed(1)}{' '}
             <span className="text-xs font-normal text-gray-500 font-sans">hrs</span>
           </p>
-          <p className="text-[11px] font-mono text-gray-400 mt-0.5 truncate flex items-center gap-1" title={inferenceSummary.longestSessionStreamer}>
+          <div className="text-[11px] font-mono text-gray-400 mt-0.5 truncate flex items-center gap-1" title={inferenceSummary.longestSessionStreamer}>
             <span>on</span>
             <StreamerAvatar channelName={inferenceSummary.longestSessionStreamer} className="w-3.5 h-3.5 rounded-full inline-block shrink-0" />
             <span className="font-bold text-gray-300 truncate">{inferenceSummary.longestSessionStreamer}</span>
-          </p>
+          </div>
         </div>
 
         <div className="rounded-xl border border-white/10 bg-[#18181B] p-3.5">

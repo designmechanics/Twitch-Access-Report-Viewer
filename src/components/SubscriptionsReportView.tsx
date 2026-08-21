@@ -103,7 +103,12 @@ export const SubscriptionsReportView: React.FC<SubscriptionsReportViewProps> = (
       const cost = sub.price || 0;
       totalEstSpend += cost;
 
-      channelTenure[sub.channel] = Math.max(channelTenure[sub.channel] || 0, sub.tenureMonths);
+      if (sub.isCumulativeTenure) {
+        channelTenure[sub.channel] = Math.max(channelTenure[sub.channel] || 0, sub.tenureMonths);
+      } else {
+        channelTenure[sub.channel] = (channelTenure[sub.channel] || 0) + sub.tenureMonths;
+      }
+      
       channelSpend[sub.channel] = (channelSpend[sub.channel] || 0) + cost;
 
       tierCounts[sub.tier] = (tierCounts[sub.tier] || 0) + 1;
@@ -120,9 +125,13 @@ export const SubscriptionsReportView: React.FC<SubscriptionsReportViewProps> = (
         }
       }
 
-      if (sub.tenureMonths > maxTenure) {
-        maxTenure = sub.tenureMonths;
-        longestChannel = sub.channel;
+    }
+
+    // Recalculate maxTenure after aggregating
+    for (const [ch, tenure] of Object.entries(channelTenure)) {
+      if (tenure > maxTenure) {
+        maxTenure = tenure;
+        longestChannel = ch;
       }
     }
 
@@ -308,12 +317,12 @@ export const SubscriptionsReportView: React.FC<SubscriptionsReportViewProps> = (
           <p className="text-xl font-mono font-bold text-cyan-400 mt-1 truncate">
             {analytics.maxTenure} <span className="text-xs text-gray-500 font-sans">mo</span>
           </p>
-          <p className="text-[11px] font-mono text-gray-400 mt-0.5 truncate flex items-center gap-1.5" title={analytics.longestChannel}>
+          <div className="text-[11px] font-mono text-gray-400 mt-0.5 truncate flex items-center gap-1.5" title={analytics.longestChannel}>
             {analytics.longestChannel && (
               <StreamerAvatar channelName={analytics.longestChannel} className="w-4 h-4 rounded-md inline-block shrink-0" />
             )}
             <span className="truncate">{analytics.longestChannel || 'N/A'}</span>
-          </p>
+          </div>
         </div>
 
         <div className="rounded-xl border border-white/10 bg-[#18181B] p-3.5">
