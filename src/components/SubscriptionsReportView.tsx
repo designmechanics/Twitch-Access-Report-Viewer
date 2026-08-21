@@ -267,7 +267,7 @@ export const SubscriptionsReportView: React.FC<SubscriptionsReportViewProps> = (
   return (
     <div ref={containerRef} className="space-y-4">
       {/* Metric Cards Banner */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 stagger-card">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 stagger-card">
         <div className="rounded-xl border border-white/10 bg-[#18181B] p-3.5">
           <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">
             Total Subs
@@ -278,6 +278,16 @@ export const SubscriptionsReportView: React.FC<SubscriptionsReportViewProps> = (
           <p className="text-[11px] font-mono text-gray-400 mt-0.5">Recorded in file</p>
         </div>
 
+        <div className="rounded-xl border border-[#9146FF]/30 bg-[#9146FF]/10 p-3.5">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[#bf94ff]">
+            Past / Ended Subs
+          </p>
+          <p className="text-xl font-mono font-bold text-[#bf94ff] mt-1">
+            {analytics.expiredCount.toLocaleString()}
+          </p>
+          <p className="text-[11px] font-mono text-gray-400 mt-0.5">Historical purchases</p>
+        </div>
+
         <div className="rounded-xl border border-emerald-900/40 bg-emerald-950/20 p-3.5">
           <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">
             Active Subs
@@ -285,14 +295,16 @@ export const SubscriptionsReportView: React.FC<SubscriptionsReportViewProps> = (
           <p className="text-xl font-mono font-bold text-emerald-400 mt-1">
             {analytics.activeCount}
           </p>
-          <p className="text-[11px] font-mono text-gray-400 mt-0.5">Ongoing benefits</p>
+          <p className="text-[11px] font-mono text-gray-400 mt-0.5">
+            {analytics.activeCount === 0 ? 'None active' : 'Ongoing renewal'}
+          </p>
         </div>
 
-        <div className="rounded-xl border border-[#9146FF]/30 bg-[#9146FF]/10 p-3.5">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-[#bf94ff]">
+        <div className="rounded-xl border border-blue-900/40 bg-blue-950/20 p-3.5">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-blue-400">
             Prime Gaming
           </p>
-          <p className="text-xl font-mono font-bold text-[#bf94ff] mt-1">
+          <p className="text-xl font-mono font-bold text-blue-400 mt-1">
             {analytics.primeCount}
           </p>
           <p className="text-[11px] font-mono text-gray-400 mt-0.5">Prime subs used</p>
@@ -450,12 +462,12 @@ export const SubscriptionsReportView: React.FC<SubscriptionsReportViewProps> = (
           </span>
 
           {[
-            { id: 'all', label: 'All Subs' },
-            { id: 'active', label: 'Active Only' },
-            { id: 'expired', label: 'Expired / Past' },
-            { id: 'prime', label: 'Prime Gaming' },
-            { id: 'giftsReceived', label: 'Gifts Received' },
-            { id: 'giftsSent', label: 'Gifts Given' },
+            { id: 'all', label: `All (${analytics.total})` },
+            { id: 'expired', label: `Past Subs (${analytics.expiredCount})` },
+            { id: 'active', label: `Active (${analytics.activeCount})` },
+            { id: 'prime', label: `Prime (${analytics.primeCount})` },
+            { id: 'giftsReceived', label: `Gifts Received (${analytics.giftsReceivedCount})` },
+            { id: 'giftsSent', label: `Gifts Given (${analytics.giftsSentCount})` },
             { id: 'tier1', label: 'Tier 1' },
             { id: 'tier2', label: 'Tier 2' },
             { id: 'tier3', label: 'Tier 3' }

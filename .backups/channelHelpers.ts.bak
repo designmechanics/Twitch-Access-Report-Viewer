@@ -197,77 +197,44 @@ export function extractNormalizedSub(row: Record<string, any>): NormalizedSubInf
   const isGiftReceived = isGiftFlag && Boolean(gifterName);
 
   // Dates
-  const startDateStr =
-    row.started_at ||
-    row.start_date ||
-    row.created_at ||
-    row.purchased_at ||
-    row.timestamp ||
-    row.date ||
-    row.time ||
-    row.datetime ||
-    row.date_time ||
-    row.start_timestamp ||
-    row.started ||
-    row.order_date ||
-    row.time_created ||
-    row.transaction_date;
+  const startDateStr = row.started_at || row.start_date || row.created_at || row.purchased_at || row.timestamp || row.date || row.start_timestamp || row.started;
+  const endDateStr = row.ended_at || row.end_date || row.expires_at || row.expiration_date || row.cancelled_at || row.end_timestamp || row.ended || row.expiration;
+  const renewalDateStr = row.renewal_date || row.next_billing_date || row.period_end || row.next_charge_date;
 
-  const endDateStr =
-    row.ended_at ||
-    row.end_date ||
-    row.expires_at ||
-    row.expiration_date ||
-    row.cancelled_at ||
-    row.end_timestamp ||
-    row.ended ||
-    row.expiration ||
-    row.period_end ||
-    row.expire_date;
-
-  const renewalDateStr =
-    row.renewal_date ||
-    row.next_billing_date ||
-    row.period_end ||
-    row.next_charge_date;
-
-  // Status Detection
-  // In Twitch GDPR archive exports, subscriptions.csv is a ledger of historical single-month
-  // and past subscriptions. They are completed historical transactions and are NOT active unless
-  // there is an explicit ongoing future renewal date or explicit unexpired active status.
+  // Status Detection & Date Math
   const rawStatus = row.status || row.state;
   const lowerStatus = rawStatus ? String(rawStatus).toLowerCase() : '';
   
   let isActive = false;
-  const now = new Date();
+  if (lowerStatus.includes('active') || lowerStatus.includes('valid') || lowerStatus.includes('ongoing')) {
+    isActive = true;
+  } else if (!lowerStatus.includes('expire') && !lowerStatus.includes('cancel') && !endDateStr) {
+    isActive = true;
+  }
 
-  // If explicitly stated active, verify if renewal or end date is genuinely in the future
-  if (lowerStatus === 'active' || lowerStatus === 'valid' || lowerStatus === 'ongoing') {
-    if (renewalDateStr) {
-      const renDate = new Date(renewalDateStr);
-      if (!isNaN(renDate.getTime()) && renDate > now) {
-        isActive = true;
-      }
-    } else if (endDateStr) {
-      const eDate = new Date(endDateStr);
-      if (!isNaN(eDate.getTime()) && eDate > now) {
-        isActive = true;
-      }
+  // Force expiration if the real end date is in the past.
+  // This solves the bug where historical transactions are treated as perpetually active.
+  const now = new Date();
+  let realEndDate: Date | null = null;
+  
+  if (endDateStr) {
+    realEndDate = new Date(endDateStr);
+  } else if (startDateStr) {
+    const sDate = new Date(startDateStr);
+    if (!isNaN(sDate.getTime())) {
+      let monthsToAdd = tierInfo.isMultiMonth ? 3 : 1;
+      const txDuration = Number(row.duration_months || row.months || monthsToAdd);
+      const validTxDuration = isNaN(txDuration) || txDuration <= 0 ? monthsToAdd : txDuration;
+      
+      sDate.setMonth(sDate.getMonth() + validTxDuration);
+      realEndDate = sDate;
     }
   }
 
-  // Determine user-friendly status text
-  let statusText = 'Ended';
-  if (isActive) {
-    statusText = 'Active';
-  } else if (isGiftFlag) {
-    statusText = 'Gift (Ended)';
-  } else if (tierInfo.isPrime) {
-    statusText = 'Prime (Ended)';
-  } else if (rawStatus && String(rawStatus).trim()) {
-    statusText = String(rawStatus).trim();
-  } else {
-    statusText = 'Past Sub';
+  if (realEndDate && !isNaN(realEndDate.getTime())) {
+    if (realEndDate < now) {
+      isActive = false;
+    }
   }
 
   const startDate = startDateStr;
@@ -302,7 +269,7 @@ export function extractNormalizedSub(row: Record<string, any>): NormalizedSubInf
     startDate: startDate ? String(startDate) : undefined,
     endDate: endDate ? String(endDate) : undefined,
     renewalDate: renewalDate ? String(renewalDate) : undefined,
-    status: statusText,
+    status: isActive ? 'Active' : rawStatus || 'Expired',
     isActive,
     price,
     currency,
